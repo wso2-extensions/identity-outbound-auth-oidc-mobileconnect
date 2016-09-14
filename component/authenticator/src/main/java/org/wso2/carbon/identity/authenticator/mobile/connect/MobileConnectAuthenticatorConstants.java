@@ -12,8 +12,8 @@ public class MobileConnectAuthenticatorConstants {
     public static final String MOBILE_CONNECT_API_SECRET = "APISecret";
     public static final String CLAIM_ID = "id";
     public static final String DEFAULT_USER_IDENTIFIER = "id";
-   public static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/sb1/v2/discovery";
-//    public static final String DISCOVERY_API_URL = "http://localhost/test_folder/discovery.php";
+//    public static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/sb1/v2/discovery";
+    public static final String DISCOVERY_API_URL = "http://localhost/test_folder/discovery.php";
 
     //Constants related to Disovery API MNC, MCC access
     public static final String DISCOVERY_IDENTIFIED_MCC = "Identified-MCC";

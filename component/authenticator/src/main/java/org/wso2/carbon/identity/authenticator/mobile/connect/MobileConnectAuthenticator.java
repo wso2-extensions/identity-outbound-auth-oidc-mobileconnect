@@ -28,7 +28,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
-import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
@@ -86,7 +85,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
 
         Enumeration e = request.getParameterNames();
-        int count =0 ;
+        int count = 0;
         while (e.hasMoreElements()) {
             count++;
             String temp = (String) e.nextElement();
@@ -101,7 +100,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
             log.info(request.getParameter(temp));
 
         }
-        if (count == 0){
+        if (count == 0) {
             return true;
         }
         return false;
@@ -141,7 +140,8 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                         + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
                         , "");
 
-                HttpResponse urlResponse = discoveryMSISDN_ignoreCookies("+917795099975", authenticatorProperties, true);
+                //select the method of call needed
+                HttpResponse urlResponse = discoveryMSISDN_ignoreCookies("+917795099975", authenticatorProperties, true, response);
 
                 BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
                 int statusCode = urlResponse.getStatusLine().getStatusCode();
@@ -248,28 +248,29 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                     JSONObject apis = jsonResponse.getJSONObject("apis");
                     JSONObject operatorid = apis.getJSONObject("operatorid");
 
-                    JSONArray operatoridLink = operatorid.getJSONArray("link");
-
-                    for (int i = 0; i < operatoridLink.length(); i++) {
-                        String linkRef = operatoridLink.getJSONObject(i).getString("rel");
-                        if (linkRef.equals("authorization")) {
-                            authorizationEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        }
-                        if (linkRef.equals("token")) {
-                            tokenEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        }
-                        if (linkRef.equals("userinfo")) {
-                            userinfoEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        }
-                        if (linkRef.equals("scope")) {
-                            operatoridScope = operatoridLink.getJSONObject(i).getString("href");
-                        }
-                    }
+//                    JSONArray operatoridLink = operatorid.getJSONArray("link");
+//
+//                    for (int i = 0; i < operatoridLink.length(); i++) {
+//                        String linkRef = operatoridLink.getJSONObject(i).getString("rel");
+//                        if (linkRef.equals("authorization")) {
+//                            authorizationEndpoint = operatoridLink.getJSONObject(i).getString("href");
+//                        }
+//                        if (linkRef.equals("token")) {
+//                            tokenEndpoint = operatoridLink.getJSONObject(i).getString("href");
+//                        }
+//                        if (linkRef.equals("userinfo")) {
+//                            userinfoEndpoint = operatoridLink.getJSONObject(i).getString("href");
+//                        }
+//                        if (linkRef.equals("scope")) {
+//                            operatoridScope = operatoridLink.getJSONObject(i).getString("href");
+//                        }
+//                    }
 
                     Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
                     String redirect_URL = getCallbackUrl(authenticatorProperties);
 
-                    HttpGet httpGet = new HttpGet(authorizationEndpoint);
+//                    HttpGet httpGet = new HttpGet(authorizationEndpoint);
+                    HttpGet httpGet = new HttpGet(MobileConnectAuthenticatorConstants.DISCOVERY_API_URL);
                     httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID, discovery_client_id);
                     httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE, "code");
                     httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE, "openid");
@@ -278,6 +279,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                     httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_STATE, sessionKey);
                     httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, sessionKey);
                     HttpResponse urlResponse = connectURL_get(httpGet);
+                    response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
 
                     BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
                     int statusCode = urlResponse.getStatusLine().getStatusCode();
@@ -295,22 +297,22 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
 
                     //Check whether the Authorization State is the same as the one in the request
-                    if (authorizationState.equals(sessionKey)) {
+                    //  if (authorizationState.equals(sessionKey)) {
 
-                        String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
-                                context.getCallerSessionKey(), context.getContextIdentifier());
+                    String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
+                            context.getCallerSessionKey(), context.getContextIdentifier());
 
-                        String subStr = queryParams.substring(queryParams
-                                .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "="));
+                    String subStr = queryParams.substring(queryParams
+                            .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "="));
 
-                        String sessionDK = subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY
-                                + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
-                                , "");
+                    String sessionDK = subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY
+                            + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
+                            , "");
 
-                        request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY, sessionDK);
-                        request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_STATE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
+                    request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY, sessionDK);
+                    request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_STATE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
 
-                    }
+                    // }
 
 
                 } catch (org.codehaus.jettison.json.JSONException e) {
@@ -425,7 +427,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * MCC / MNC Discovery with GET verb
      */
-    protected HttpResponse discoveryMCCMNC_get(String MNC, String MCC, Map<String, String> authenticatorProperties)
+    protected HttpResponse discoveryMCCMNC_get(String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?"
@@ -441,6 +443,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
         HttpResponse urlResponse = connectURL_get(httpGet);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -448,7 +454,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * MCC / MNC Discovery with POST verb
      */
-    protected HttpResponse discoveryMCCMNC_post(String MNC, String MCC, Map<String, String> authenticatorProperties)
+    protected HttpResponse discoveryMCCMNC_post(String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL;
@@ -463,6 +469,14 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
         HttpResponse urlResponse = connectURL_post(httpPost);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, contentType);
+        response.addHeader(MobileConnectAuthenticatorConstants.DISCOVERY_IDENTIFIED_MCC, MCC);
+        response.addHeader(MobileConnectAuthenticatorConstants.DISCOVERY_IDENTIFIED_MNC, MNC);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -470,7 +484,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Discovery request with Ignore Cookies flag - MCC/MNC Request
      */
-    protected HttpResponse discoveryMCCMNC_ignoreCookies(String MNC, String MCC, Map<String, String> authenticatorProperties, boolean cookie)
+    protected HttpResponse discoveryMCCMNC_ignoreCookies(String MNC, String MCC, Map<String, String> authenticatorProperties, boolean cookie, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?"
@@ -486,6 +500,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
         HttpResponse urlResponse = connectURL_get(httpGet);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -493,7 +511,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Discovery request with Ignore Cookes flag: MSISDN Based POST request
      */
-    protected HttpResponse discoveryMSISDN_ignoreCookies(String MSISDN, Map<String, String> authenticatorProperties, boolean cookie)
+    protected HttpResponse discoveryMSISDN_ignoreCookies(String MSISDN, Map<String, String> authenticatorProperties, boolean cookie, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
@@ -508,6 +526,13 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
         HttpResponse urlResponse = connectURL_post(httpPost);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, contentType);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -515,7 +540,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Discovery request with Set-Cookies=false
      */
-    protected HttpResponse discoveryMCCMNC_setCookies(String MNC, String MCC, Map<String, String> authenticatorProperties, boolean cookie)
+    protected HttpResponse discoveryMCCMNC_setCookies(String MNC, String MCC, Map<String, String> authenticatorProperties, boolean cookie, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?"
@@ -531,6 +556,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
         HttpResponse urlResponse = connectURL_get(httpGet);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -538,7 +567,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
      */
-    protected HttpResponse discoveryMSISDN(String MSISDN, Map<String, String> authenticatorProperties)
+    protected HttpResponse discoveryMSISDN(String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL;
@@ -552,6 +581,13 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
         HttpResponse urlResponse = connectURL_post(httpPost);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, contentType);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -559,7 +595,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * MSISDN Based Discovery (Followed after user interaction)
      */
-    protected HttpResponse discovery_userInteraction(String MSISDN, Map<String, String> authenticatorProperties)
+    protected HttpResponse discovery_userInteraction(String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
@@ -572,6 +608,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
         HttpResponse urlResponse = connectURL_get(httpGet);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.sendRedirect(url);
+
         return urlResponse;
 
     }
@@ -579,7 +619,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * IP Range based Discovery - When the Mobile Data Network is used by the App
      */
-    protected HttpResponse discovery_ipRangeBased(String MSISDN, Map<String, String> authenticatorProperties , boolean cookie, boolean mobileData, String localIP)
+    protected HttpResponse discovery_ipRangeBased(String MSISDN, Map<String, String> authenticatorProperties, boolean cookie, boolean mobileData, String localIP, HttpServletResponse response)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
@@ -595,6 +635,11 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USING_MOBILE_DATA, String.valueOf(mobileData));
         HttpResponse urlResponse = connectURL_get(httpGet);
 
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, accept);
+        response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USING_MOBILE_DATA, String.valueOf(mobileData));
+        response.sendRedirect(url);
+
         return urlResponse;
 
         //another step is required to be carried out
@@ -602,6 +647,13 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     }
 
 
+    /**
+     * Get the CallBackURL
+     */
+    protected String responseRedirect(String url, HttpServletResponse response, int status) {
+
+            return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
+    }
     /**
      * Get the CallBackURL
      */
