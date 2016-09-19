@@ -38,12 +38,17 @@ import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
+import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
+import org.wso2.carbon.identity.application.authentication.framework.LocalApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.StepConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.ApplicationAuthenticatorException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -76,7 +81,87 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     private String accessToken = "";
     private String idToken = "";
 
+    @Override
+    public AuthenticatorFlowStatus process(HttpServletRequest request,
+                                           HttpServletResponse response, AuthenticationContext context)
+            throws AuthenticationFailedException, LogoutFailedException {
 
+        if (!context.isLogoutRequest()) {
+            if (!canHandle(request)
+                    || (request.getAttribute(FrameworkConstants.REQ_ATTR_HANDLED) != null && ((Boolean) request
+                    .getAttribute(FrameworkConstants.REQ_ATTR_HANDLED)))) {
+
+                if (context.getProperty("flowStatus") == null) {
+                    initiateAuthenticationRequest(request, response, context);
+                } else if (context.getProperty("flowStatus").equals("authorizationEndpoint")) {
+                    authorizeAuthenticationRequest(request, response, context);
+                }
+                else if (context.getProperty("flowStatus").equals("tokenEndpoint")) {
+                    tokenAuthenticationRequest(request, response, context);
+                }
+
+
+                context.setCurrentAuthenticator(getName());
+                return AuthenticatorFlowStatus.INCOMPLETE;
+            } else {
+                try {
+                    processAuthenticationResponse(request, response, context);
+                    if (this instanceof LocalApplicationAuthenticator) {
+                        if (!context.getSequenceConfig().getApplicationConfig().isSaaSApp()) {
+                            String userDomain = context.getSubject().getTenantDomain();
+                            String tenantDomain = context.getTenantDomain();
+                            if (!StringUtils.equals(userDomain, tenantDomain)) {
+                                context.setProperty("UserTenantDomainMismatch", true);
+                                throw new AuthenticationFailedException("Service Provider tenant domain must be " +
+                                        "equal to user tenant domain for non-SaaS applications");
+                            }
+                        }
+                    }
+                    request.setAttribute(FrameworkConstants.REQ_ATTR_HANDLED, true);
+                    return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+                } catch (AuthenticationFailedException e) {
+                    Map<Integer, StepConfig> stepMap = context.getSequenceConfig().getStepMap();
+                    boolean stepHasMultiOption = false;
+
+                    if (stepMap != null && !stepMap.isEmpty()) {
+                        StepConfig stepConfig = stepMap.get(context.getCurrentStep());
+
+                        if (stepConfig != null) {
+                            stepHasMultiOption = stepConfig.isMultiOption();
+                        }
+                    }
+
+                    if (retryAuthenticationEnabled() && !stepHasMultiOption) {
+                        context.setRetrying(true);
+                        context.setCurrentAuthenticator(getName());
+                        initiateAuthenticationRequest(request, response, context);
+                        return AuthenticatorFlowStatus.INCOMPLETE;
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+            // if a logout flow
+        } else {
+            try {
+                if (!canHandle(request)) {
+                    context.setCurrentAuthenticator(getName());
+                    initiateLogoutRequest(request, response, context);
+                    return AuthenticatorFlowStatus.INCOMPLETE;
+                } else {
+                    processLogoutResponse(request, response, context);
+                    return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+                }
+            } catch (UnsupportedOperationException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Ignoring UnsupportedOperationException.", e);
+                }
+                return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+            }
+        }
+    }
+
+    @Override
     public String getContextIdentifier(HttpServletRequest request) {
 
         if (request.getSession().getAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CONTEXT_IDENTIFIER) == null) {
@@ -99,21 +184,37 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         while (e.hasMoreElements()) {
             count++;
             String temp = (String) e.nextElement();
+            String state = (String) request.getSession().getAttribute("tokenStatus");
+            if (temp.equals("code") && state == null){
+                request.getSession().setAttribute("tokenStatus","okay");
+                return true;
+            }
             log.info(temp);
             log.info(request.getParameter(temp));
 
         }
-        Enumeration e1 = request.getHeaderNames();
-        while (e1.hasMoreElements()) {
-            String temp = (String) e1.nextElement();
-            log.info(temp);
-            log.info(request.getParameter(temp));
+//        Enumeration e1 = request.getHeaderNames();
+//        while (e1.hasMoreElements()) {
+//            String temp = (String) e1.nextElement();
+//            log.info(temp);
+//            log.info(request.getHeader(temp));
+//
+//        }
 
-        }
-        if (count == 0) {
-            return true;
+        String state = (String) request.getSession().getAttribute("canHandleStatus");
+        if (state != null){
+            if (state.equals("incomplete")){
+                request.getSession().setAttribute("canHandleStatus", null);
+                return true;
+            }
+            if (count == 0) {
+                return true;
+            }
+            return false;
+
         }
         return false;
+
 
         //        return (request.getParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMMONAUTH_IDP) != null
 //                && request.getParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMMONAUTH_AUTHENTICATOR) != null
@@ -157,7 +258,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                 int statusCode = urlResponse.getStatusLine().getStatusCode();
                 String jsonData = "";
 
-                if (statusCode == 200) {
+                if (statusCode == 200 || statusCode == 301) {
 
                     String line = "";
                     while ((line = rd.readLine()) != null) {
@@ -165,8 +266,9 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                         jsonData += line + "\n";
                     }
                     log.info("Authorization Successful");
-                    response.setStatus(0);
-                    response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+                    response.addHeader("canHandleStatus", "incomplete");
+                    request.getSession().setAttribute( "canHandleStatus", "incomplete");
+                    response.sendRedirect(MobileConnectAuthenticatorConstants.DISCOVERY_API_URL);
 
                 } else if (statusCode == 401) {
                     String line = "";
@@ -211,6 +313,8 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                 request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
                 request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_STATE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY);
 
+                context.setProperty("flowStatus", "authorizationEndpoint");
+
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -227,10 +331,108 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
     }
 
+    /**
+     * Process the response of the Discovery and Mobile Connect API
+     */
+    protected void authorizeAuthenticationRequest(HttpServletRequest request,
+                                                  HttpServletResponse response, AuthenticationContext context)
+            throws AuthenticationFailedException {
+
+        String client_id = "CijTuPz1hd3rormpV1IrCcbW5xQa";
+        authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+
+
+        String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
+                context.getCallerSessionKey(), context.getContextIdentifier());
+
+        String subStr = queryParams.substring(queryParams
+                .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "="));
+
+        String sessionDK = subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY
+                + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
+                , "");
+
+        try {
+            OAuthClientRequest authzRequest = OAuthClientRequest
+                    .authorizationLocation(authorizationEndpoint)
+                    .setClientId(client_id)
+                    .setRedirectURI(getCallbackUrl(authenticatorProperties))
+                    .setResponseType("code")
+                    .setScope("openid")
+                    .setState(sessionDK)
+                    .buildQueryMessage();
+
+            response.sendRedirect(authzRequest.getLocationUri());
+            request.getSession().setAttribute( "canHandleStatus", "incomplete");
+
+
+
+//            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY, sessionDK);
+//            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CONTEXT_IDENTIFIER, sessionDK);
+            context.setProperty("flowStatus", "tokenEndpoint");
+
+            //response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+
+        } catch (OAuthSystemException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+    }
 
     /**
      * Process the response of the Discovery and Mobile Connect API
      */
+    protected void tokenAuthenticationRequest(HttpServletRequest request,
+                                                  HttpServletResponse response, AuthenticationContext context)
+            throws AuthenticationFailedException {
+
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+
+
+        try {
+
+            String redirect_URL = getCallbackUrl(authenticatorProperties);
+
+            tokenEndpoint = "https://localhost:9444/oauth2/token";
+            HttpGet httpGet = new HttpGet(tokenEndpoint);
+            String consumerSecret = "TTFFTDnbB5piYvQCMSApLmY9RDka";
+            String consumerKey = "CijTuPz1hd3rormpV1IrCcbW5xQa";
+            String code = request.getParameter("code");
+
+            OAuthClientRequest accessRequest = OAuthClientRequest.tokenLocation(tokenEndpoint)
+                    .setGrantType(GrantType.AUTHORIZATION_CODE)
+                    .setClientId(consumerKey)
+                    .setClientSecret(consumerSecret)
+                    .setRedirectURI(redirect_URL)
+                    .setCode(code)
+                    .buildBodyMessage();
+
+            OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
+
+            OAuthClientResponse oAuthResponse = oAuthClient.accessToken(accessRequest);
+            accessToken = oAuthResponse.getParam("oauth_token");
+            idToken = oAuthResponse.getParam("id_token");
+
+
+
+            //response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+        } catch (OAuthSystemException e) {
+            e.printStackTrace();
+        } catch (OAuthProblemException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+
+
+
     @Override
     protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,
                                                  AuthenticationContext context) throws AuthenticationFailedException {
@@ -241,10 +443,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         if (state != null) {
 
             int discoveryStatusCode = (int) request.getSession().getAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_RESPONSE_STATE);
-            JSONObject jsonObject = (JSONObject) request.getSession().getAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
 
-            if ((state).equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY) && discoveryStatusCode == 200) {
+            if ((state).equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY) && (discoveryStatusCode == 200 || discoveryStatusCode == 301)) {
                 try {
+                    JSONObject jsonObject = (JSONObject) request.getSession().getAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
                     String ttl = jsonObject.getString("ttl");
 
                     JSONObject jsonResponse = jsonObject.getJSONObject("response");
@@ -280,7 +482,6 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                     String redirect_URL = getCallbackUrl(authenticatorProperties);
 
                     String client_id = "CijTuPz1hd3rormpV1IrCcbW5xQa";
-
                     authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
 
                     OAuthClientRequest authzRequest = OAuthClientRequest
@@ -290,8 +491,10 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                             .setResponseType("code")
                             .setScope("openid")
                             .buildQueryMessage();
-//                    response.sendRedirect(authzRequest.getLocationUri());
+                    //response.sendRedirect(authzRequest.getLocationUri());
                     response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+                    //context.setSubject();
+
                     return;
 //                    String url = authorizationEndpoint + "?scope=openid&response_type=code&redirect_uri=" +
 //                            redirect_URL + "&client_id=" + client_id;
@@ -363,7 +566,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                     Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
                     String redirect_URL = getCallbackUrl(authenticatorProperties);
 
-                    tokenEndpoint = "https://localhost:9443/oauth2/token";
+                    tokenEndpoint = "https://localhost:9444/oauth2/token";
                     HttpGet httpGet = new HttpGet(tokenEndpoint);
                     String consumerSecret = "TTFFTDnbB5piYvQCMSApLmY9RDka";
                     String consumerKey = "CijTuPz1hd3rormpV1IrCcbW5xQa";
