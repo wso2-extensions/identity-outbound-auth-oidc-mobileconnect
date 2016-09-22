@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.authenticator.mobile.connect;
+package org.wso2.carbon.identity.authenticator.mobileconnect;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;

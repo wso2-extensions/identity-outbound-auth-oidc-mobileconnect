@@ -24,7 +24,7 @@
         <version>1</version>
     </parent>
     <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
-    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect</artifactId>
+    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
     <version>1.0.6-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon Extension - Mobile Connect Pom</name>

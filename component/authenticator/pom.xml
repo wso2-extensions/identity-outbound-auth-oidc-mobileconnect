@@ -18,11 +18,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
-        <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect</artifactId>
+        <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
         <version>1.0.6-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
-    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect.connector</artifactId>
+    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector</artifactId>
     <packaging>bundle</packaging>
     <name>WSO2 Carbon - Authenticator Library For Mobile Connect</name>
     <url>http://wso2.org</url>
@@ -56,7 +56,7 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
-                        <Private-Package>org.wso2.carbon.identity.authenticator.mobile.connect.internal</Private-Package>
+                        <Private-Package>org.wso2.carbon.identity.authenticator.mobileconnect.internal</Private-Package>
                         <Import-Package>
                             org.apache.axis2.*,
                             javax.xml.soap,

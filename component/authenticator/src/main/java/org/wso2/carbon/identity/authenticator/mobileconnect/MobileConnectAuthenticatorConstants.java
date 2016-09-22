@@ -1,4 +1,4 @@
-package org.wso2.carbon.identity.authenticator.mobile.connect;
+package org.wso2.carbon.identity.authenticator.mobileconnect;
 
 /**
  * Created by keetmalin on 8/26/16.

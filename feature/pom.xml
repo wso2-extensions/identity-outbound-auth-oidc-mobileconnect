@@ -18,10 +18,10 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
-        <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect</artifactId>
+        <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
         <version>1.0.6-SNAPSHOT</version>
     </parent>
-    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect.feature</artifactId>
+    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.feature</artifactId>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - identity Mobile Connect Feature</name>
     <url>http://wso2.org</url>
@@ -29,7 +29,7 @@
     <dependencies>
         <dependency>
             <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
-            <artifactId>org.wso2.carbon.extension.identity.authenticator.mobile.connect.connector</artifactId>
+            <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -47,7 +47,7 @@
                             <goal>p2-feature-gen</goal>
                         </goals>
                         <configuration>
-                            <id>org.wso2.carbon.extension.identity.authenticator.mobile.connect.connector</id>
+                            <id>org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector</id>
                             <propertiesFile>feature.properties</propertiesFile>
                             <adviceFile>
                                 <properties>
@@ -57,7 +57,7 @@
                             </adviceFile>
                             <bundles>
                                 <bundleDef>
-                                    org.wso2.carbon.extension.identity.authenticator:org.wso2.carbon.extension.identity.authenticator.mobile.connect.connector
+                                    org.wso2.carbon.extension.identity.authenticator:org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector
                                 </bundleDef>
                             </bundles>
                         </configuration>
