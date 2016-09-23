@@ -257,7 +257,9 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
             String MNC = request.getParameter("MNC");
 
             //delete this
-            MSISDN = "+94779711780";
+//            MSISDN = "+94779711780";
+            MCC = "901";
+            MNC = "01";
             String basicAuth = "";
 
             String userpass = mobileConnectKey + ":" + mobileConnectSecret;
@@ -419,7 +421,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
             JSONObject jsonResponse = jsonObject.getJSONObject("response");
             authorizationClientId = jsonResponse.getString("client_id");
             authorizationSecret = jsonResponse.getString("client_secret");
-            subscriber_id = jsonResponse.getString("subscriber_id");
+            //subscriber_id = jsonResponse.getString("subscriber_id");
             serving_operator = jsonResponse.getString("serving_operator");
             country = jsonResponse.getString("country");
             currency = jsonResponse.getString("currency");
@@ -453,8 +455,8 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         }
 
         //remove these when u get the proper access points
-        authorizationClientId = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
-        authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
+        //authorizationClientId = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
+        //authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
@@ -1019,7 +1021,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         mobileConnectAcrValues.setValue("1");
         mobileConnectAcrValues.setDescription("Enter the Mobile Connect ACR Values required");
         mobileConnectAcrValues.setDisplayOrder(3);
-        configProperties.add(mobileConnectScope);
+        configProperties.add(mobileConnectAcrValues);
 
         return configProperties;
     }
