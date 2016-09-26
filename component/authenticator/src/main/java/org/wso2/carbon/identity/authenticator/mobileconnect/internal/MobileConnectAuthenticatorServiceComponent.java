@@ -35,7 +35,6 @@ public class MobileConnectAuthenticatorServiceComponent {
     protected void activate(ComponentContext ctxt) {
         try {
             MobileConnectAuthenticator authenticator = new MobileConnectAuthenticator();
-//            Hashtable<String, String> props = new Hashtable<String, String>();
             ctxt.getBundleContext().registerService(ApplicationAuthenticator.class.getName(),
                     authenticator, null);
             if (log.isDebugEnabled()) {
@@ -51,4 +50,6 @@ public class MobileConnectAuthenticatorServiceComponent {
             log.debug("Mobile Connect authenticator is deactivated");
         }
     }
+    //todo: run findbug to entire component, contact prakash. with Security plugin + default issues
+    //todo: code style in engineering group
 }

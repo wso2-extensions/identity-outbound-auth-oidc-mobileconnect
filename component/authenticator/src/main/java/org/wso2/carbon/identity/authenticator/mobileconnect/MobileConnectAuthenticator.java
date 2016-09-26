@@ -65,17 +65,19 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 
+//todo: class comments
 public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator implements
         FederatedApplicationAuthenticator {
 
-    private static final long serialVersionUID = -4844100162196896194L;
     private static final Log log = LogFactory.getLog(MobileConnectAuthenticator.class);
+    private static final long serialVersionUID = -5664579475828589747L;
 
     @Override
     public AuthenticatorFlowStatus process(HttpServletRequest request,
                                            HttpServletResponse response, AuthenticationContext context)
             throws AuthenticationFailedException, LogoutFailedException {
 
+        //todo: check logout request and bypass. No need of logout request
         if (!context.isLogoutRequest()) {
             if (!canHandle(request)
                     || (request.getAttribute(FrameworkConstants.REQ_ATTR_HANDLED) != null && ((Boolean) request
@@ -257,9 +259,9 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
             String MNC = request.getParameter("MNC");
 
             //delete this
-//            MSISDN = "+94779711780";
-            MCC = "901";
-            MNC = "01";
+            //MSISDN = "+919205614966";
+            MCC = "413";
+            MNC = "02";
             String basicAuth = "";
 
             String userpass = mobileConnectKey + ":" + mobileConnectSecret;
@@ -304,7 +306,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         if (MSISDN != null) {
             urlResponse = discoveryMSISDN_ignoreCookies(basicAuth, MSISDN, authenticatorProperties, true, response, false);
         } else if (MNC != null && MCC != null) {
-            urlResponse = discoveryMCCMNC_get(basicAuth, MNC, MCC, authenticatorProperties, response, false);
+            urlResponse = discoveryMCCMNC_get(basicAuth, MNC, MCC, authenticatorProperties, response, false, sessionDK);
         } else {
             urlResponse = discoveryMSISDN_ignoreCookies(basicAuth, null, authenticatorProperties, true, response, true);
         }
@@ -519,9 +521,9 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
             //remove these assignments once the API is connected
             String redirect_URL = getCallbackUrl(authenticatorProperties);
-            tokenEndpoint = "https://localhost:9444/oauth2/token";
-            authorizationClientId = "TTFFTDnbB5piYvQCMSApLmY9RDka";
-            authorizationSecret = "CijTuPz1hd3rormpV1IrCcbW5xQa";
+            //tokenEndpoint = "https://localhost:9444/oauth2/token";
+            //authorizationClientId = "TTFFTDnbB5piYvQCMSApLmY9RDka";
+            //authorizationSecret = "CijTuPz1hd3rormpV1IrCcbW5xQa";
             String code = request.getParameter("code");
 
             OAuthClientRequest accessRequest = OAuthClientRequest.tokenLocation(tokenEndpoint)
@@ -634,7 +636,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
     /**
      * MCC / MNC Discovery with GET verb
      */
-    protected HttpResponse discoveryMCCMNC_get(String basicAuth, String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection)
+    protected HttpResponse discoveryMCCMNC_get(String basicAuth, String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?"
@@ -642,7 +644,8 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                 + MobileConnectAuthenticatorConstants.DISCOVERY_IDENTIFIED_MNC + "=" + MNC + "&"
                 + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 getCallbackUrl(authenticatorProperties) + "&"
-                + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(manualSelection);
+                + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(manualSelection) + "&"+
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMMONAUTH_SDK + "=" + sessionDK;
 
         if (manualSelection) {
             response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
