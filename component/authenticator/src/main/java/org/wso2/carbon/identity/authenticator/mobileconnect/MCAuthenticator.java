@@ -1,5 +1,6 @@
 package org.wso2.carbon.identity.authenticator.mobileconnect;
 
+import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,48 +38,42 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Created by keetmalin on 9/27/16.
+ * Authenticator of Mobile Connect.
+ * The MobileConnectAuthenticator class carries out the Discovery API Process and the Mobile Connect API process
  */
 public class MCAuthenticator extends OpenIDConnectAuthenticator implements FederatedApplicationAuthenticator {
 
     private static Log log = LogFactory.getLog(MCAuthenticator.class);
-
     @Override
     protected void initiateAuthenticationRequest(HttpServletRequest request, HttpServletResponse response,
                                                  AuthenticationContext context)
             throws AuthenticationFailedException {
 
 
-        String MSISDN = request.getParameter("MSISDN");
-        String MCC = request.getParameter("MCC");
-        String MNC = request.getParameter("MNC");
+        String msisdn = request.getParameter("msisdn");
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         if (authenticatorProperties != null) {
 
-            if (context.getProperty("flowStatus") == null ){
+            if (context.getProperty("flowStatus") == null) {
                 String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
                 String mobileConnectSecret = getMobileConnectAPISecret(authenticatorProperties);
 
-
                 //delete this
-                MSISDN = "+919205614966";
-                MCC = "901";
-                MNC = "01";
+                msisdn = "+919205614966";
 
                 String basicAuth = "";
                 String userpass = mobileConnectKey + ":" + mobileConnectSecret;
-                                    try {
-                    basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes("UTF-8"));
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
+
+                basicAuth = "Basic " + Base64Utils.encode(userpass.getBytes(StandardCharsets.UTF_8));
+
 
                 String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
                         context.getCallerSessionKey(), context.getContextIdentifier());
@@ -91,13 +86,14 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                         , "");
 
                 try {
-                    processDiscoverProcess(basicAuth, MSISDN, MNC, MCC, authenticatorProperties, request, response, context, sessionDK);
+                    //
+                    processDiscoverProcess(basicAuth, msisdn, authenticatorProperties, request, response, context, sessionDK);
                 } catch (IOException | JSONException e) {
                     e.printStackTrace();
                 }
             }
 
-            if (context.getProperty("flowStatus").equals("authorizationEndpoint")){
+            if (context.getProperty("flowStatus").equals("authorizationEndpoint")) {
 
                 JSONObject jsonObject = (JSONObject) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
                 String authorizationEndpoint = "";
@@ -153,19 +149,10 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 //authorizationClientId = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
                 //authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
 
-                authenticatorProperties = context.getAuthenticatorProperties();
-                String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
-                        context.getCallerSessionKey(), context.getContextIdentifier());
-
-                String subStr = queryParams.substring(queryParams
-                        .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "="));
-
-                String sessionDK = subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY
-                        + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
-                        , "");
-
                 String scope = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE);
                 String acr_values = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES);
+
+                String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
 
                 try {
                     OAuthClientRequest authzRequest = OAuthClientRequest
@@ -174,10 +161,10 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                             .setRedirectURI(getCallbackUrl(authenticatorProperties))
                             .setResponseType("code")
                             .setScope(scope)
-                            .setState(sessionDK)
+                            .setState(state)
                             .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES, acr_values)
-                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, sessionDK)
-                            .setParameter("login_hint", "ENCR_MSISDN:"+subscriber_id)
+                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
+                            .setParameter("login_hint", "ENCR_MSISDN:" + subscriber_id)
                             .buildQueryMessage();
 
                     String url = authzRequest.getLocationUri();
@@ -207,7 +194,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
-    protected void processDiscoverProcess(String basicAuth, String MSISDN, String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletRequest request,
+    protected void processDiscoverProcess(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletRequest request,
                                           HttpServletResponse response, AuthenticationContext context, String sessionDK) throws IOException, JSONException {
         HttpResponse urlResponse = null;
         String temp = "";
@@ -215,10 +202,8 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         //select the method of call needed
         if (MSISDN != null) {
             temp = discoveryMSISDN(basicAuth, MSISDN, authenticatorProperties, response, false, sessionDK);
-        } else if (MNC != null && MCC != null) {
-            urlResponse = discoveryMCCMNC_get(basicAuth, MNC, MCC, authenticatorProperties, response, true, sessionDK);
         } else {
-            urlResponse = discoveryMSISDN_ignoreCookies(basicAuth, null, authenticatorProperties, true, response, true);
+//            urlResponse = discoveryNoMSISDN(basicAuth, null, authenticatorProperties, true, response, true);
         }
 
 
@@ -278,9 +263,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 //                }
 //            }
 
-            JSONObject jsonObject = new JSONObject(temp);
+        JSONObject jsonObject = new JSONObject(temp);
 
-            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
+        context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
 
 
 //        }
@@ -447,7 +432,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 + MobileConnectAuthenticatorConstants.DISCOVERY_IDENTIFIED_MNC + "=" + MNC + "&"
                 + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 getCallbackUrl(authenticatorProperties) + "&"
-                + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(manualSelection) + "&"+
+                + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(manualSelection) + "&" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMMONAUTH_SDK + "=" + sessionDK;
 
         if (manualSelection) {
@@ -605,11 +590,11 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     /**
      * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
      */
-    protected String discoveryMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
+    protected String discoveryNoMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + sessionDK;
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" + getCallbackUrl(authenticatorProperties);
 
         URL obj = new URL(url);
         HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
@@ -620,7 +605,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
         conn.setDoOutput(true);
 
-        String data = "MSISDN=%2B"+ MSISDN.substring(1)+ "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
+        String data = "MSISDN=%2B" + MSISDN.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
         OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
         out.write(data);
         out.close();
@@ -660,6 +645,45 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 //
 //
 //        return urlResponse;
+
+    }
+
+    /**
+     * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
+     */
+    protected String discoveryMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
+            throws IOException {
+
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + sessionDK;
+
+        URL obj = new URL(url);
+        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+        conn.setDoOutput(true);
+
+        String data = "MSISDN=%2B" + MSISDN.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
+        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
+        out.write(data);
+        out.close();
+
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        StringBuilder out2 = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            out2.append(line);
+        }
+        String response2 = out2.toString();
+        System.out.println(response2);   //Prints the string content read from input stream
+
+        reader.close();
+        return response2;
+
 
     }
 
@@ -805,6 +829,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         }
         return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
     }
+
     /**
      * Get Configuration Properties
      */
