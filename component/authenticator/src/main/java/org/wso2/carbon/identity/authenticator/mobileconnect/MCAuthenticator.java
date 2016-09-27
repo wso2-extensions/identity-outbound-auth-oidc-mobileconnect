@@ -20,13 +20,11 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
-import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.ApplicationAuthenticatorException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
-import org.wso2.carbon.identity.application.authenticator.oidc.OIDCAuthenticatorConstants;
 import org.wso2.carbon.identity.application.authenticator.oidc.OpenIDConnectAuthenticator;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -36,10 +34,9 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,6 +55,10 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
             throws AuthenticationFailedException {
 
 
+        String MSISDN = request.getParameter("MSISDN");
+        String MCC = request.getParameter("MCC");
+        String MNC = request.getParameter("MNC");
+
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         if (authenticatorProperties != null) {
 
@@ -65,14 +66,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
                 String mobileConnectSecret = getMobileConnectAPISecret(authenticatorProperties);
 
-                //get MSISDN/ MNC/ MCC from Service provider
-                String MSISDN = request.getParameter("MSISDN");
-                String MCC = request.getParameter("MCC");
-                String MNC = request.getParameter("MNC");
 
                 //delete this
-                //MSISDN = "+919205614966";
-//                MSISDN = "+94779711780";
+                MSISDN = "+919205614966";
                 MCC = "901";
                 MNC = "01";
 
@@ -122,7 +118,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                     JSONObject jsonResponse = jsonObject.getJSONObject("response");
                     authorizationClientId = jsonResponse.getString("client_id");
                     authorizationSecret = jsonResponse.getString("client_secret");
-                    //subscriber_id = jsonResponse.getString("subscriber_id");
+                    subscriber_id = jsonResponse.getString("subscriber_id");
                     serving_operator = jsonResponse.getString("serving_operator");
                     country = jsonResponse.getString("country");
                     currency = jsonResponse.getString("currency");
@@ -181,9 +177,11 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                             .setState(sessionDK)
                             .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES, acr_values)
                             .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, sessionDK)
+                            .setParameter("login_hint", "ENCR_MSISDN:"+subscriber_id)
                             .buildQueryMessage();
 
-                    response.sendRedirect(authzRequest.getLocationUri());
+                    String url = authzRequest.getLocationUri();
+                    response.sendRedirect(url);
                     request.getSession().setAttribute("canHandleStatus", "incomplete");
 
                     context.setProperty("flowStatus", "tokenEndpoint");
@@ -211,80 +209,81 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     protected void processDiscoverProcess(String basicAuth, String MSISDN, String MNC, String MCC, Map<String, String> authenticatorProperties, HttpServletRequest request,
                                           HttpServletResponse response, AuthenticationContext context, String sessionDK) throws IOException, JSONException {
-        HttpResponse urlResponse;
+        HttpResponse urlResponse = null;
+        String temp = "";
 
         //select the method of call needed
         if (MSISDN != null) {
-            urlResponse = discoveryMSISDN(basicAuth, MSISDN, authenticatorProperties, response, false);
+            temp = discoveryMSISDN(basicAuth, MSISDN, authenticatorProperties, response, false, sessionDK);
         } else if (MNC != null && MCC != null) {
-            urlResponse = discoveryMCCMNC_get(basicAuth, MNC, MCC, authenticatorProperties, response, false, sessionDK);
+            urlResponse = discoveryMCCMNC_get(basicAuth, MNC, MCC, authenticatorProperties, response, true, sessionDK);
         } else {
             urlResponse = discoveryMSISDN_ignoreCookies(basicAuth, null, authenticatorProperties, true, response, true);
         }
 
 
-        if (urlResponse != null) {
+//        if (urlResponse != null) {
 
-            BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
-            int statusCode = urlResponse.getStatusLine().getStatusCode();
-            String jsonData = "";
+//            BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
+//            int statusCode = urlResponse.getStatusLine().getStatusCode();
+//            String jsonData = "";
+//
+//            if (statusCode == 200) {
+//
+//                String line = "";
+//                while ((line = rd.readLine()) != null) {
+//                    log.info(line);
+//                    jsonData += line + "\n";
+//                }
+//                log.info("Authorization Successful");
+//                request.getSession().setAttribute("canHandleStatus", "incomplete");
+//                //response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+//
+//            } else if (statusCode == 401) {
+//                String line = "";
+//                while ((line = rd.readLine()) != null) {
+//                    log.info(line);
+//                    jsonData += line + "\n";
+//
+//                }
+//                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+//                response.sendRedirect(url);
+//                log.error("No Authorization or Bad Session");
+//
+//            } else if (statusCode == 404) {
+//                String line = "";
+//                while ((line = rd.readLine()) != null) {
+//                    log.info(line);
+//                    jsonData += line + "\n";
+//                }
+//                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+//                response.sendRedirect(url);
+//                log.error("Bad MSISDN is supplied");
+//
+//            } else if (statusCode == 400) {
+//                String line = "";
+//                while ((line = rd.readLine()) != null) {
+//                    log.info(line);
+//                    jsonData += line + "\n";
+//                }
+//                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+//                response.sendRedirect(url);
+//                log.error("Bad MSISDN is supplied");
+//
+//            } else {
+//                String line = "";
+//                while ((line = rd.readLine()) != null) {
+//                    log.info(line);
+//                    jsonData += line + "\n";
+//                }
+//            }
 
-            if (statusCode == 200) {
-
-                String line = "";
-                while ((line = rd.readLine()) != null) {
-                    log.info(line);
-                    jsonData += line + "\n";
-                }
-                log.info("Authorization Successful");
-                request.getSession().setAttribute("canHandleStatus", "incomplete");
-                //response.sendRedirect(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
-
-            } else if (statusCode == 401) {
-                String line = "";
-                while ((line = rd.readLine()) != null) {
-                    log.info(line);
-                    jsonData += line + "\n";
-
-                }
-                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                response.sendRedirect(url);
-                log.error("No Authorization or Bad Session");
-
-            } else if (statusCode == 404) {
-                String line = "";
-                while ((line = rd.readLine()) != null) {
-                    log.info(line);
-                    jsonData += line + "\n";
-                }
-                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                response.sendRedirect(url);
-                log.error("Bad MSISDN is supplied");
-
-            } else if (statusCode == 400) {
-                String line = "";
-                while ((line = rd.readLine()) != null) {
-                    log.info(line);
-                    jsonData += line + "\n";
-                }
-                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                response.sendRedirect(url);
-                log.error("Bad MSISDN is supplied");
-
-            } else {
-                String line = "";
-                while ((line = rd.readLine()) != null) {
-                    log.info(line);
-                    jsonData += line + "\n";
-                }
-            }
-
-            JSONObject jsonObject = new JSONObject(jsonData);
+            JSONObject jsonObject = new JSONObject(temp);
 
             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
 
 
-        }
+//        }
 
 
         context.setProperty("flowStatus", "authorizationEndpoint");
@@ -606,32 +605,61 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     /**
      * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
      */
-    protected HttpResponse discoveryMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection)
+    protected String discoveryMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
             throws IOException {
 
-        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL;
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + sessionDK;
+
+        URL obj = new URL(url);
+        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+        conn.setDoOutput(true);
+
+        String data = "MSISDN=%2B"+ MSISDN.substring(1)+ "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
+        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
+        out.write(data);
+        out.close();
+
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        StringBuilder out2 = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            out2.append(line);
+        }
+        String response2 = out2.toString();
+        System.out.println(response2);   //Prints the string content read from input stream
+
+        reader.close();
+        return response2;
+
 //                + "&"
 //                + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(manualSelection);
-        if (manualSelection) {
-            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
-            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
-            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
-            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
-            response.sendRedirect(url);
-            return null;
-        }
-        HttpPost httpPost = new HttpPost(url);
-
-        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
-        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
-        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
-        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
-        HttpResponse urlResponse = connectURL_post(httpPost);
-
-
-        return urlResponse;
+//        if (manualSelection) {
+//            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+//            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+//            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+//            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
+//            response.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
+//            response.sendRedirect(url);
+//            return null;
+//        }
+//        HttpPost httpPost = new HttpPost(url);
+//
+//        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+//        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+//        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+//        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_MSISDN, MSISDN);
+//        httpPost.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL, getCallbackUrl(authenticatorProperties));
+//        HttpResponse urlResponse = connectURL_post(httpPost);
+//
+//
+//        return urlResponse;
 
     }
 
