@@ -60,38 +60,36 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                                                  AuthenticationContext context)
             throws AuthenticationFailedException {
 
-
+        //check whether the msisdn is sent by the service provider
         String msisdn = request.getParameter("msisdn");
 
+        //retrieve the properties configured 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+        
+        //this is null, if no such properties are defined in the IS as an IDP
         if (authenticatorProperties != null) {
 
+            //"Flowstatus" is the property set by the IDP, to keep track of the authentication process
             if (context.getProperty("flowStatus") == null) {
+                
+                //get the mobile connect key and secret
                 String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
                 String mobileConnectSecret = getMobileConnectAPISecret(authenticatorProperties);
 
                 //delete this
                 msisdn = "+919205614966";
 
-                String basicAuth = "";
+                //Base 64 encode the key and secret to attach as the header for URL connections
                 String userpass = mobileConnectKey + ":" + mobileConnectSecret;
+                String authorizationHeader = "Basic " + Base64Utils.encode(userpass.getBytes(StandardCharsets.UTF_8));
 
-                basicAuth = "Basic " + Base64Utils.encode(userpass.getBytes(StandardCharsets.UTF_8));
-
-
-                String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
-                        context.getCallerSessionKey(), context.getContextIdentifier());
-
-                String subStr = queryParams.substring(queryParams
-                        .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "="));
-
-                String sessionDK = subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY
-                        + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=")
-                        , "");
+                //get the current state of the context to attach with the response
+                String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
+                state = getState(state, authenticatorProperties);
 
                 try {
-                    //
-                    processDiscoverProcess(basicAuth, msisdn, authenticatorProperties, request, response, context, sessionDK);
+                    //carryout the discovery process
+                    discoveryEndpointConnect(authorizationHeader, msisdn, authenticatorProperties, request, response, context, state);
                 } catch (IOException | JSONException e) {
                     e.printStackTrace();
                 }
@@ -198,8 +196,11 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
-    protected void processDiscoverProcess(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletRequest request,
-                                          HttpServletResponse response, AuthenticationContext context, String sessionDK) throws IOException, JSONException {
+    /**
+     * Carry out the discovery API endpoint connections
+     */
+    protected void discoveryEndpointConnect(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletRequest request,
+                                            HttpServletResponse response, AuthenticationContext context, String sessionDK) throws IOException, JSONException {
         HttpResponse urlResponse = null;
         String temp = "";
 
@@ -277,29 +278,42 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
         context.setProperty("flowStatus", "authorizationEndpoint");
     }
-
+    /**
+     * Return the mobile connect key from configuration files or UI
+     */
     protected String getMobileConnectAPIKey(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
+        //retrieve mobile connect key from the configuration file of IS
         String mobileConnectKey = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_KEY);
 
         if (mobileConnectKey != null) {
             return mobileConnectKey;
-        } else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
+        }
+        //retrieve the mobile connect key from the IS user interface
+        else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY);
         } else {
+
+            //if both the configuration files and UI key values are null
             throw new AuthenticationFailedException("MobileConnect Key is not configured");
         }
 
     }
-
+    /**
+     * Return the mobile connect secret from configuration files or UI
+     */
     protected String getMobileConnectAPISecret(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
+        //retrieve mobile connect secret from the configuration file of IS
         String mobileConnectSecret = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SECRET);
         if (mobileConnectSecret != null) {
             return mobileConnectSecret;
-        } else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET) != null) {
+        }
+        //retrieve the mobile connect secret from the IS user interface
+        else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET);
         } else {
+            //if both the configuration files and UI secret values are null
             throw new AuthenticationFailedException("MobileConnect Secret is not configured");
         }
 
