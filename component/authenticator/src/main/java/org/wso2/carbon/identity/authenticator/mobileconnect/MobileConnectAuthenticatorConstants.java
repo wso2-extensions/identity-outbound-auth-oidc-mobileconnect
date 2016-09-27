@@ -10,8 +10,8 @@ public class MobileConnectAuthenticatorConstants {
     public static final String AUTHENTICATOR_FRIENDLY_NAME = "Mobile Connect";
     public static final String MOBILE_CONNECT_API_KEY = "APIKey";
     public static final String MOBILE_CONNECT_API_SECRET = "APISecret";
-    public static final String MOBILE_CONNECT_API_KEY_VALUE = "CijTuPz1hd3rormpV1IrCcbW5xQa";
-    public static final String MOBILE_CONNECT_API_SECRET_VALUE = "TTFFTDnbB5piYvQCMSApLmY9RDka";
+    public static final String MOBILE_CONNECT_KEY = "MobileConnectKey";
+    public static final String MOBILE_CONNECT_SECRET = "MobileConnectSecret";
     public static final String CLAIM_ID = "id";
     public static final String DEFAULT_USER_IDENTIFIER = "id";
     public static final String DISCOVERY_API_URL = "http://discovery.sandbox2.mobileconnect.io/v2/discovery";

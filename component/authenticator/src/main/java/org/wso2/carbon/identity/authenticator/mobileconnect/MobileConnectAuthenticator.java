@@ -65,7 +65,6 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 
-//todo: class comments
 public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator implements
         FederatedApplicationAuthenticator {
 
@@ -77,7 +76,6 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
                                            HttpServletResponse response, AuthenticationContext context)
             throws AuthenticationFailedException, LogoutFailedException {
 
-        //todo: check logout request and bypass. No need of logout request
         if (!context.isLogoutRequest()) {
             if (!canHandle(request)
                     || (request.getAttribute(FrameworkConstants.REQ_ATTR_HANDLED) != null && ((Boolean) request

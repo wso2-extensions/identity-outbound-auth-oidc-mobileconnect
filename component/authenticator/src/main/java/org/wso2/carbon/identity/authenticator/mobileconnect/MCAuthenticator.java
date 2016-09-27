@@ -51,6 +51,10 @@ import java.util.Map;
 public class MCAuthenticator extends OpenIDConnectAuthenticator implements FederatedApplicationAuthenticator {
 
     private static Log log = LogFactory.getLog(MCAuthenticator.class);
+
+    /**
+     * Initiate the Authentication request when the AuthenticatorFlowStatus is INCOMPLETE
+     */
     @Override
     protected void initiateAuthenticationRequest(HttpServletRequest request, HttpServletResponse response,
                                                  AuthenticationContext context)
@@ -274,21 +278,30 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         context.setProperty("flowStatus", "authorizationEndpoint");
     }
 
-    protected String getMobileConnectAPIKey(Map<String, String> authenticatorProperties) {
+    protected String getMobileConnectAPIKey(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
-        if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
+        String mobileConnectKey = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_KEY);
+
+        if (mobileConnectKey != null) {
+            return mobileConnectKey;
+        } else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY);
+        } else {
+            throw new AuthenticationFailedException("MobileConnect Key is not configured");
         }
-        return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
 
     }
 
-    protected String getMobileConnectAPISecret(Map<String, String> authenticatorProperties) {
+    protected String getMobileConnectAPISecret(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
-        if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET) != null) {
+        String mobileConnectSecret = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SECRET);
+        if (mobileConnectSecret != null) {
+            return mobileConnectSecret;
+        } else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET);
+        } else {
+            throw new AuthenticationFailedException("MobileConnect Secret is not configured");
         }
-        return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET_VALUE;
 
     }
 
