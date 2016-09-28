@@ -72,11 +72,14 @@ public class MobileConnectAuthenticatorConstants {
     public static final String MOBILE_CONNECT_LINKS_TOKEN= "token";
 
     //constants related to the Token endpoint connection
-    public static final String MOBILE_CONNECT_TOKEN_AUTHORIZATION = "Authorization";
+    public static final String MOBILE_CONNECT_ACCESS_TOKEN = "access_token";
+    public static final String MOBILE_CONNECT_TOKEN_TYPE = "token_type";
+    public static final String MOBILE_CONNECT_TOKEN_ID = "id_token";
     public static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE = "Content-Type";
     public static final String MOBILE_CONNECT_TOKEN_CODE = "code";
     public static final String MOBILE_CONNECT_TOKEN_GRANT_TYPE = "grant_type";
     public static final String MOBILE_CONNECT_TOKEN_REDIRECT_URI = "redirect_uri";
+    public static final String MOBILE_CONNECT_USER_INFO_RESPONSE= "jsonString";
 
 
 
