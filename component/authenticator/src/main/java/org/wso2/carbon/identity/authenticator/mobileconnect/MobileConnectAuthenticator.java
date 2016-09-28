@@ -437,12 +437,13 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             HttpResponse urlResponse = connectURL_get(httpGet);
 
             BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
-            String jsonString = "";
 
+            StringBuilder stringBuilder = new StringBuilder();
             String line;
             while ((line = rd.readLine()) != null) {
-                jsonString += line + "\n";
+                stringBuilder.append(line).append("\n");
             }
+            String jsonString = stringBuilder.toString();
             //set the jsonString object in the context
             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE, jsonString);
 
