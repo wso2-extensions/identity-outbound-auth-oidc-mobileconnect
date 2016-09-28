@@ -278,13 +278,19 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         context.setProperty("flowStatus", "authorizationEndpoint");
     }
 
+    /**
+     * Returns the Mobile Connect API Key
+     */
     protected String getMobileConnectAPIKey(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
+        //retrieves the mobile connect key from the configuration file
         String mobileConnectKey = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_KEY);
 
         if (mobileConnectKey != null) {
             return mobileConnectKey;
-        } else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
+        }
+        //
+        else if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY);
         } else {
             throw new AuthenticationFailedException("MobileConnect Key is not configured");
@@ -292,6 +298,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
+    /**
+     * Returns the Mobile Connect API Secret
+     */
     protected String getMobileConnectAPISecret(Map<String, String> authenticatorProperties) throws AuthenticationFailedException {
 
         String mobileConnectSecret = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SECRET);
