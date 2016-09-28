@@ -50,6 +50,4 @@ public class MobileConnectAuthenticatorServiceComponent {
             log.debug("Mobile Connect authenticator is deactivated");
         }
     }
-    //todo: run findbug to entire component, contact prakash. with Security plugin + default issues
-    //todo: code style in engineering group
 }
