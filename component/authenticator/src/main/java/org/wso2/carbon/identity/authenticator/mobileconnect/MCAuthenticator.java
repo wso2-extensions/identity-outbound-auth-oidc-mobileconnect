@@ -51,6 +51,7 @@ import java.util.Map;
  */
 public class MCAuthenticator extends OpenIDConnectAuthenticator implements FederatedApplicationAuthenticator {
 
+    private static final long serialVersionUID = -6594339874626978804L;
     private static Log log = LogFactory.getLog(MCAuthenticator.class);
 
     /**
@@ -78,7 +79,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 String mobileConnectSecret = getMobileConnectAPISecret(authenticatorProperties);
 
                 //delete this
-                msisdn = "+919205614966";
+                //msisdn = "+919205614966";
 
                 //Base 64 encode the key and secret to attach as the header for URL connections
                 String userpass = mobileConnectKey + ":" + mobileConnectSecret;
