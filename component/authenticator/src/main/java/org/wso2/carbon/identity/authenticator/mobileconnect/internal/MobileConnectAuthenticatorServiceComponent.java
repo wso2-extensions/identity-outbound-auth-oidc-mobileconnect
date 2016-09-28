@@ -23,7 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.ComponentContext;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
-import org.wso2.carbon.identity.authenticator.mobileconnect.MCAuthenticator;
 import org.wso2.carbon.identity.authenticator.mobileconnect.MobileConnectAuthenticator;
 
 /**
@@ -35,8 +34,7 @@ public class MobileConnectAuthenticatorServiceComponent {
 
     protected void activate(ComponentContext ctxt) {
         try {
-            //MobileConnectAuthenticator authenticator = new MobileConnectAuthenticator();
-            MCAuthenticator authenticator = new MCAuthenticator();
+            MobileConnectAuthenticator authenticator = new MobileConnectAuthenticator();
             ctxt.getBundleContext().registerService(ApplicationAuthenticator.class.getName(),
                     authenticator, null);
             if (log.isDebugEnabled()) {
