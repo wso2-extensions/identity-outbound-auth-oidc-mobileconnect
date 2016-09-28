@@ -201,12 +201,12 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
      */
     protected void discoveryEndpointConnect(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletRequest request,
                                             HttpServletResponse response, AuthenticationContext context, String sessionDK) throws IOException, JSONException {
-        HttpResponse urlResponse = null;
-        String temp = "";
 
-        //select the method of call needed
+        //this variable will hold the response from the connections
+        String responseString = "";
+
         if (MSISDN != null) {
-            temp = discoveryMSISDN(basicAuth, MSISDN, authenticatorProperties, response, false, sessionDK);
+            temp = discoveryProcess(basicAuth, MSISDN, authenticatorProperties, response, false, sessionDK);
         } else {
 //            urlResponse = discoveryNoMSISDN(basicAuth, null, authenticatorProperties, true, response, true);
         }
@@ -617,28 +617,28 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     /**
      * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
      */
-    protected String discoveryNoMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
+    protected String discoveryNoMSISDN(String authorizationHeader, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
             throws IOException {
 
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" + getCallbackUrl(authenticatorProperties);
 
         URL obj = new URL(url);
-        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
 
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-        conn.setDoOutput(true);
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, authorizationHeader);
+        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+        connection.setDoOutput(true);
 
         String data = "MSISDN=%2B" + MSISDN.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
-        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
+        OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream());
         out.write(data);
         out.close();
 
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
         StringBuilder out2 = new StringBuilder();
         String line;
         while ((line = reader.readLine()) != null) {
@@ -676,41 +676,48 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     }
 
     /**
-     * MSISDN based Discovery (Developer app uses Discovery API to send MSISDN)
+     * msisdn based Discovery (Developer app uses Discovery API to send msisdn)
      */
-    protected String discoveryMSISDN(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, HttpServletResponse response, boolean manualSelection, String sessionDK)
+    protected HttpURLConnection discoveryProcess(String basicAuth, String msisdn, Map<String, String> authenticatorProperties , String state)
             throws IOException {
 
-        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + sessionDK;
+        //check whether the msisdn is provided as a parameter
+        if (msisdn!=null){
+            String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + state;
 
-        URL obj = new URL(url);
-        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+            URL obj = new URL(url);
+            HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
 
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
-        conn.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-        conn.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
+            connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION, basicAuth);
+            connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+            connection.setDoOutput(true);
 
-        String data = "MSISDN=%2B" + MSISDN.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
-        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
-        out.write(data);
-        out.close();
+            String data = "MSISDN=%2B" + msisdn.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
+            OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream());
+            out.write(data);
+            out.close();
 
+            return connection;
+        }else{
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder out2 = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            out2.append(line);
         }
-        String response2 = out2.toString();
-        System.out.println(response2);   //Prints the string content read from input stream
 
-        reader.close();
-        return response2;
 
+
+//        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+//        StringBuilder out2 = new StringBuilder();
+//        String line;
+//        while ((line = reader.readLine()) != null) {
+//            out2.append(line);
+//        }
+//        String responseString = out2.toString();
+//
+//        reader.close();
+//
+//        return responseString;
 
     }
 
