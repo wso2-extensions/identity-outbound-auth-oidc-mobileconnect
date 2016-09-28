@@ -37,11 +37,8 @@ public class MobileConnectAuthenticatorConstants {
     public static final String MOBILE_CONNECT_SESSION_STATE = "state";
     public static final String MOBILE_CONNECT_DISCOVERY = "discovery";
     public static final String MOBILE_CONNECT_AUTHORIZATION_ENDPOINT = "authorization_endpoint";
-    public static final String MOBILE_CONNECT_AUTHORIZATION_ENDPOINT_URL = "authorization_endpoint";
     public static final String MOBILE_CONNECT_TOKEN_ENDPOINT = "token_endpoint";
-    public static final String MOBILE_CONNECT_TOKEN_ENDPOINT_URL = "token_endpoint";
     public static final String MOBILE_CONNECT_USERINFO_ENDPOINT = "userinfo_endpoint";
-    public static final String MOBILE_CONNECT_USERINFO_ENDPOINT_URL = "userinfo_endpoint";
     public static final String MOBILE_CONNECT_FLOW_STATUS = "flowStatus";
 
     //constants related to Discovery API Connection
@@ -59,7 +56,7 @@ public class MobileConnectAuthenticatorConstants {
     //constants related to the Authorization Endpoint Connection
     public static final String MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID = "client_id";
     public static final String MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET = "client_secret";
-    public static final String MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE = "response_type";
+    public static final String MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE = "code";
     public static final String MOBILE_CONNECT_AUTHORIZATION_SCOPE = "scope";
     public static final String MOBILE_CONNECT_AUTHORIZATION_REDIRECT_URI = "redirect_uri";
     public static final String MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES = "acr_values";
@@ -69,6 +66,7 @@ public class MobileConnectAuthenticatorConstants {
     public static final String MOBILE_CONNECT_AUTHORIZATION_LINK= "link";
     public static final String MOBILE_CONNECT_AUTHORIZATION_STATE = "state";
     public static final String MOBILE_CONNECT_AUTHORIZATION_NONCE = "nonce";
+    public static final String MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT = "login_hint";
     public static final String MOBILE_CONNECT_LINKS_USERINFO = "userinfo";
     public static final String MOBILE_CONNECT_LINKS_AUTHORIZATION= "authorization";
     public static final String MOBILE_CONNECT_LINKS_TOKEN= "token";

@@ -116,8 +116,6 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
                 try {
 
-                    String ttl = jsonObject.getString("ttl");
-
                     JSONObject jsonResponse = jsonObject.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
                     authorizationClientId = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
                     authorizationSecret = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
@@ -153,39 +151,40 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                     }
                 }
 
-                //get scope from authenticationProperties or from the response in the Discovery API
+                //get scope from authentication Properties or from the response in the Discovery API
                 String scope = getMobileConnectScope(authenticatorProperties, operatoridScope);
+                //get acr values from the authentication properties
                 String acr_values = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES);
-
+                //retrieve current state
                 String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
 
+                //create oAuthClientrequest to contact the Authorization Endpooint
                 try {
-                    OAuthClientRequest authzRequest = OAuthClientRequest
+                    OAuthClientRequest oAuthClientRequest = OAuthClientRequest
                             .authorizationLocation(authorizationEndpoint)
                             .setClientId(authorizationClientId)
                             .setRedirectURI(getCallbackUrl(authenticatorProperties))
-                            .setResponseType("code")
+                            .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
                             .setScope(scope)
                             .setState(state)
                             .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES, acr_values)
                             .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
-                            .setParameter("login_hint", "ENCR_MSISDN:" + subscriber_id)
+                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT, "ENCR_MSISDN:" + subscriber_id)
                             .buildQueryMessage();
 
-                    String url = authzRequest.getLocationUri();
+                    //contact the authorization endpoint
+                    String url = oAuthClientRequest.getLocationUri();
                     response.sendRedirect(url);
-                    request.getSession().setAttribute("canHandleStatus", "incomplete");
 
+                    //set the context values to be used in the rest of the flow
                     context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT);
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT_URL, tokenEndpoint);
-                    context.setProperty("userinfoEndpoint", userinfoEndpoint);
-                    context.setProperty("authorizationClientId", authorizationClientId);
-                    context.setProperty("authorizationSecret", authorizationSecret);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT, tokenEndpoint);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USERINFO_ENDPOINT, userinfoEndpoint);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID, authorizationClientId);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET, authorizationSecret);
 
-                } catch (OAuthSystemException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (OAuthSystemException | IOException e) {
+                    throw new AuthenticationFailedException("response redirection failed");
                 }
 
             }
@@ -286,6 +285,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
+
     /**
      * Return the mobile connect scope from UI or Discovery API response
      */
@@ -304,6 +304,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         }
 
     }
+
 
     /**
      * Return the mobile connect secret from configuration files or UI
@@ -325,6 +326,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
+
     /**
      * Process the response of the Discovery and Mobile Connect API
      */
@@ -334,9 +336,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-        String tokenEndpoint = (String) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT_URL);
-        String authorizationClientId = (String) context.getProperty("authorizationClientId");
-        String authorizationSecret = (String) context.getProperty("authorizationSecret");
+        String tokenEndpoint = (String) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT);
+        String authorizationClientId = (String) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
+        String authorizationSecret = (String) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
 
         try {
 
