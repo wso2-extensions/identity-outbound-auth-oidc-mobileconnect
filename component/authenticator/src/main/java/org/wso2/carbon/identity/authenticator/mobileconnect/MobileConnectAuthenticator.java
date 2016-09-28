@@ -383,7 +383,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY);
         }
-        return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
+        return null;
 
     }
 
@@ -392,7 +392,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
         if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET) != null) {
             return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET);
         }
-        return MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_SECRET_VALUE;
+        return null;
 
     }
 
