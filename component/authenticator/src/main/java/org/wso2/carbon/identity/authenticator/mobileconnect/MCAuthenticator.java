@@ -70,8 +70,8 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         //this is null, if no such properties are defined in the IS as an IDP
         if (authenticatorProperties != null) {
 
-            //"Flowstatus" is the property set by the IDP, to keep track of the authentication process
-            if (context.getProperty("flowStatus") == null) {
+            //MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS is the property set by the IDP, to keep track of the authentication process
+            if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null) {
 
                 //get the mobile connect key and secret
                 String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
@@ -92,6 +92,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                     //carryout the process of connecting the Discovery Endpoint
                     discoveryEndpointConnect(authorizationHeader, msisdn, authenticatorProperties, context, state, request, response);
                 } catch (JSONException e) {
+                    //redirect to Log in retry URL
                     String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
                     try {
                         response.sendRedirect(url);
@@ -101,8 +102,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 }
             }
 
-            if (context.getProperty("flowStatus").equals("authorizationEndpoint")) {
+            if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS).equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT)) {
 
+                //decode the json object returned from the Discovery API
                 JSONObject jsonObject = (JSONObject) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
                 String authorizationEndpoint = "";
                 String tokenEndpoint = "";
@@ -111,53 +113,48 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 String authorizationClientId = "";
                 String authorizationSecret = "";
                 String subscriber_id = "";
-                String serving_operator = "";
-                String country = "";
-                String currency = "";
 
                 try {
 
                     String ttl = jsonObject.getString("ttl");
 
-                    JSONObject jsonResponse = jsonObject.getJSONObject("response");
-                    authorizationClientId = jsonResponse.getString("client_id");
-                    authorizationSecret = jsonResponse.getString("client_secret");
-                    subscriber_id = jsonResponse.getString("subscriber_id");
-                    serving_operator = jsonResponse.getString("serving_operator");
-                    country = jsonResponse.getString("country");
-                    currency = jsonResponse.getString("currency");
+                    JSONObject jsonResponse = jsonObject.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
+                    authorizationClientId = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
+                    authorizationSecret = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
+                    subscriber_id = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
+                    JSONObject apis = jsonResponse.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_APIS);
+                    JSONObject operatorid = apis.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_OPERATOR_ID);
 
-                    JSONObject apis = jsonResponse.getJSONObject("apis");
-                    JSONObject operatorid = apis.getJSONObject("operatorid");
-
-                    JSONArray operatoridLink = operatorid.getJSONArray("link");
+                    JSONArray operatoridLink = operatorid.getJSONArray(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LINK);
 
                     for (int i = 0; i < operatoridLink.length(); i++) {
                         String linkRef = operatoridLink.getJSONObject(i).getString("rel");
-                        if (linkRef.equals("authorization")) {
+                        if (linkRef.equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_AUTHORIZATION)) {
                             authorizationEndpoint = operatoridLink.getJSONObject(i).getString("href");
                         }
-                        if (linkRef.equals("token")) {
+                        if (linkRef.equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_TOKEN)) {
                             tokenEndpoint = operatoridLink.getJSONObject(i).getString("href");
                         }
-                        if (linkRef.equals("userinfo")) {
+                        if (linkRef.equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_USERINFO)) {
                             userinfoEndpoint = operatoridLink.getJSONObject(i).getString("href");
                         }
-                        if (linkRef.equals("scope")) {
+                        if (linkRef.equals(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE)) {
                             operatoridScope = operatoridLink.getJSONObject(i).getString("href");
                         }
                     }
 
-
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    //redirect to Log in retry URL
+                    String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                    try {
+                        response.sendRedirect(url);
+                    } catch (IOException e1) {
+                        throw new AuthenticationFailedException("response redirection failed. Invalid JSON object returned from the Discovery Server");
+                    }
                 }
 
-                //remove these when u get the proper access points
-                //authorizationClientId = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY_VALUE;
-                //authorizationEndpoint = "https://localhost:9444/oauth2/authorize";
-
-                String scope = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE);
+                //get scope from authenticationProperties or from the response in the Discovery API
+                String scope = getMobileConnectScope(authenticatorProperties, operatoridScope);
                 String acr_values = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES);
 
                 String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
@@ -179,8 +176,8 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                     response.sendRedirect(url);
                     request.getSession().setAttribute("canHandleStatus", "incomplete");
 
-                    context.setProperty("flowStatus", "tokenEndpoint");
-                    context.setProperty("tokenEndpoint", tokenEndpoint);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT);
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT_URL, tokenEndpoint);
                     context.setProperty("userinfoEndpoint", userinfoEndpoint);
                     context.setProperty("authorizationClientId", authorizationClientId);
                     context.setProperty("authorizationSecret", authorizationSecret);
@@ -230,14 +227,14 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 reader.close();
                 JSONObject jsonObject = new JSONObject(responseString);
                 context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
-                context.setProperty("flowStatus", "authorizationEndpoint");
+                context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
                 log.info("MSISDN is valid. Discovery Endpoint authorization successful");
             }
             //if 302, move temporarily
             else if (responseCode == 302) {
                 String redirectUrl = connection.getHeaderField("location");
                 response.sendRedirect(redirectUrl);
-                context.setProperty("flowStatus", "authorizationEndpoint");
+                context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
                 log.info("MSISDN is invalid. Redirecting to mobile connect interface");
             }
             //if 401 unauthorized
@@ -289,6 +286,24 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
     }
 
+    /**
+     * Return the mobile connect scope from UI or Discovery API response
+     */
+    protected String getMobileConnectScope(Map<String, String> authenticatorProperties, String operatoridScope) throws AuthenticationFailedException {
+
+        //retrieve mobile connect scope from the UI
+        if (authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE) != null) {
+            return authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE);
+        }
+        //retrieve the mobile connect scope from the discovery response
+        else if (operatoridScope != null) {
+            return operatoridScope;
+        } else {
+            //if both the UI scope and Discovery response scope values are null
+            throw new AuthenticationFailedException("MobileConnect Scope is not configured correctly");
+        }
+
+    }
 
     /**
      * Return the mobile connect secret from configuration files or UI
@@ -319,7 +334,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-        String tokenEndpoint = (String) context.getProperty("tokenEndpoint");
+        String tokenEndpoint = (String) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT_URL);
         String authorizationClientId = (String) context.getProperty("authorizationClientId");
         String authorizationSecret = (String) context.getProperty("authorizationSecret");
 
