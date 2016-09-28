@@ -89,10 +89,15 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
                 state = getState(state, authenticatorProperties);
 
                 try {
-                    //carryout the discovery process
+                    //carryout the process of connecting the Discovery Endpoint
                     discoveryEndpointConnect(authorizationHeader, msisdn, authenticatorProperties, context, state, request, response);
-                } catch (IOException | JSONException e) {
-                    e.printStackTrace();
+                } catch (JSONException e) {
+                    String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                    try {
+                        response.sendRedirect(url);
+                    } catch (IOException e1) {
+                        throw new AuthenticationFailedException("response redirection failed");
+                    }
                 }
             }
 
@@ -201,56 +206,60 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
      * Carry out the discovery API endpoint connections
      */
     protected void discoveryEndpointConnect(String basicAuth, String MSISDN, Map<String, String> authenticatorProperties, AuthenticationContext context, String state,
-                                            HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
+                                            HttpServletRequest request, HttpServletResponse response) throws JSONException, AuthenticationFailedException {
 
-        //this variable will hold the response from the connections
-        HttpURLConnection connection = null;
-        //call this method to retrieve a HttpURLConnection object
-        connection = discoveryProcess(basicAuth, MSISDN, authenticatorProperties, state);
+        try {
+            //this variable will hold the response from the connections
+            HttpURLConnection connection = null;
+            //call this method to retrieve a HttpURLConnection object
+            connection = discoveryProcess(basicAuth, MSISDN, authenticatorProperties, state);
 
-        //check the responseCode of the HttpURLConnection
-        int responseCode = connection.getResponseCode();
+            //check the responseCode of the HttpURLConnection
+            int responseCode = connection.getResponseCode();
 
-        //if 200 OK
-        if (responseCode == 200) {
-            //read the response sent by the server
-            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            StringBuilder stringBuilder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line);
+            //if 200 OK
+            if (responseCode == 200) {
+                //read the response sent by the server
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder stringBuilder = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+                String responseString = stringBuilder.toString();
+                reader.close();
+                JSONObject jsonObject = new JSONObject(responseString);
+                context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
+                context.setProperty("flowStatus", "authorizationEndpoint");
+                log.info("MSISDN is valid. Discovery Endpoint authorization successful");
             }
-            String responseString = stringBuilder.toString();
-            reader.close();
-            JSONObject jsonObject = new JSONObject(responseString);
-            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT, jsonObject);
-            context.setProperty("flowStatus", "authorizationEndpoint");
-            log.info("MSISDN is valid. Discovery Endpoint authorization successful");
-        }
-        //if 302, move temporarily
-        else if (responseCode==302) {
-            String redirectUrl = connection.getHeaderField("location");
-            response.sendRedirect(redirectUrl);
-            context.setProperty("flowStatus", "authorizationEndpoint");
-            log.info("MSISDN is invalid. Redirecting to mobile connect interface");
-        }
-        //if 401 unauthorized
-        else if(responseCode == 401){
-            String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+            //if 302, move temporarily
+            else if (responseCode == 302) {
+                String redirectUrl = connection.getHeaderField("location");
+                response.sendRedirect(redirectUrl);
+                context.setProperty("flowStatus", "authorizationEndpoint");
+                log.info("MSISDN is invalid. Redirecting to mobile connect interface");
+            }
+            //if 401 unauthorized
+            else if (responseCode == 401) {
+                String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
                 response.sendRedirect(url);
                 log.error("No Authorization or Bad Session");
-        }
-        //if 404, not found
-        else if(responseCode == 404){
+            }
+            //if 404, not found
+            else if (responseCode == 404) {
                 String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
                 response.sendRedirect(url);
                 log.error("Bad MSISDN is supplied");
-        }
-        //if 400 bad request
-        else if(responseCode == 400){
+            }
+            //if 400 bad request
+            else if (responseCode == 400) {
                 String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
                 response.sendRedirect(url);
                 log.error("Bad MSISDN is supplied");
+            }
+        } catch (IOException e) {
+            throw new AuthenticationFailedException("response redirection failed");
         }
 
 
