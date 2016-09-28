@@ -252,7 +252,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             //if 200 OK
             if (responseCode == 200) {
                 //read the response sent by the server
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream() , StandardCharsets.UTF_8));
                 StringBuilder stringBuilder = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -412,6 +412,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         } catch (OAuthSystemException | OAuthProblemException e) {
             throw new AuthenticationFailedException("Token andpoint authentication failed", e);
+        } catch (IOException e) {
+            throw new AuthenticationFailedException("Authentication failed", e);
         }
 
 
@@ -420,8 +422,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Access the userinfo Endpoint and using the access_token
      */
-    private void userInfoAuthenticationRequest(String accessTokenIdentifier, AuthenticationContext context) throws AuthenticationFailedException {
+    private void userInfoAuthenticationRequest(String accessTokenIdentifier, AuthenticationContext context) throws AuthenticationFailedException, IOException {
 
+        BufferedReader bufferedReader = null;
+        StringBuilder stringBuilder;
         try {
 
             //retrieve the userinfo endpoint url from the Context
@@ -436,11 +440,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             //connect to the userinfo endpoint
             HttpResponse urlResponse = connectURL_get(httpGet);
 
-            BufferedReader rd = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
+            bufferedReader = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent(), StandardCharsets.UTF_8));
 
-            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder = new StringBuilder();
             String line;
-            while ((line = rd.readLine()) != null) {
+            while ((line = bufferedReader.readLine()) != null) {
                 stringBuilder.append(line).append("\n");
             }
             String jsonString = stringBuilder.toString();
@@ -449,6 +453,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         } catch (IOException e) {
             throw new AuthenticationFailedException("Authentication Error when contacting the userinfo endpoint", e);
+        } finally{
+                if (bufferedReader != null){
+                    bufferedReader.close();
+                }
+
         }
 
     }
@@ -488,7 +497,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //send the data with the connection. remove the plus sign (+) from the msisdn value
             String data = "MSISDN=%2B" + msisdn.substring(1) + "&Redirect_URL=" + getCallbackUrl(authenticatorProperties);
-            OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream());
+            OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream() , StandardCharsets.UTF_8);
             out.write(data);
             out.close();
 
