@@ -6,6 +6,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.oltu.oauth2.client.OAuthClient;
@@ -209,7 +210,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         try {
             buildClaims(context, jsonObject);
         } catch (ApplicationAuthenticatorException e) {
-            e.printStackTrace();
+            throw new AuthenticationFailedException("Authentication failed" , e);
         }
 
     }
@@ -224,7 +225,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
             //this variable will hold the response from the connections
             HttpURLConnection connection = null;
             //call this method to retrieve a HttpURLConnection object
-            connection = discoveryProcess(basicAuth, MSISDN, authenticatorProperties, state);
+            connection = discoveryProcess(basicAuth, MSISDN, authenticatorProperties, state, response);
 
             //check the responseCode of the HttpURLConnection
             int responseCode = connection.getResponseCode();
@@ -400,7 +401,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     /**
      * Access the userinfo Endpoint and using the access_token
      */
-    protected void userinfoAuthenticationRequest(String accessTokenIdentifier, HttpServletResponse response, AuthenticationContext context) {
+    protected void userinfoAuthenticationRequest(String accessTokenIdentifier, HttpServletResponse response, AuthenticationContext context) throws AuthenticationFailedException {
 
          try {
 
@@ -427,7 +428,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE, jsonString);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new AuthenticationFailedException("Authentication Error when contacting the userinfo endpoint" , e);
         }
 
     }
@@ -450,7 +451,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     /**
      * msisdn based Discovery (Developer app uses Discovery API to send msisdn)
      */
-    protected HttpURLConnection discoveryProcess(String authorizationHeader, String msisdn, Map<String, String> authenticatorProperties, String state)
+    protected HttpURLConnection discoveryProcess(String authorizationHeader, String msisdn, Map<String, String> authenticatorProperties, String state, HttpServletResponse response)
             throws IOException {
 
         //check whether the msisdn is provided as a parameter
@@ -479,8 +480,9 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
         else {
 
             String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" + getCallbackUrl(authenticatorProperties) + "&" +
-                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + state;
+                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" + getCallbackUrl(authenticatorProperties) + "&"+
+                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATA_KEY + "=" + state + "&"
+                    + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MANUAL_SELECTION + "=" + String.valueOf(true);;
 
             URL obj = new URL(url);
             HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
@@ -592,7 +594,7 @@ public class MCAuthenticator extends OpenIDConnectAuthenticator implements Feder
     @Override
     public List<Property> getConfigurationProperties() {
 
-        List<Property> configProperties = new ArrayList<Property>();
+        List<Property> configProperties = new ArrayList<>();
 
         //set the mobile connect key input field
         Property mobileConnectKey = new Property();

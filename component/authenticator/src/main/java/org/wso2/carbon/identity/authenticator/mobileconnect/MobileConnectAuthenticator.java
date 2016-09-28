@@ -258,7 +258,7 @@ public class MobileConnectAuthenticator extends AbstractApplicationAuthenticator
 
             //delete this
             //MSISDN = "+919205614966";
-            MSISDN = "+94779711780";
+//            MSISDN = "+94779711780";
             //MCC = "413";
             //MNC = "02";
             String basicAuth = "";
