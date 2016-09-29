@@ -126,86 +126,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT.equals(context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS))) {
 
-                //decode the json object returned from the Discovery API
-                JSONObject jsonObject = (JSONObject) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
-                String authorizationEndpoint = "";
-                String tokenEndpoint = "";
-                String userinfoEndpoint = "";
-                String operatoridScope = "";
-                String authorizationClientId = "";
-                String authorizationSecret = "";
-                String subscriber_id = "";
-
-                try {
-
-                    JSONObject jsonResponse = jsonObject.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
-                    authorizationClientId = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
-                    authorizationSecret = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
-                    subscriber_id = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
-                    JSONObject apis = jsonResponse.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_APIS);
-                    JSONObject operatorid = apis.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_OPERATOR_ID);
-
-                    JSONArray operatoridLink = operatorid.getJSONArray(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LINK);
-
-                    for (int i = 0; i < operatoridLink.length(); i++) {
-                        String linkRef = operatoridLink.getJSONObject(i).getString("rel");
-                        if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_AUTHORIZATION.equals(linkRef)) {
-                            authorizationEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_TOKEN.equals(linkRef)) {
-                            tokenEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_USERINFO.equals(linkRef)) {
-                            userinfoEndpoint = operatoridLink.getJSONObject(i).getString("href");
-                        } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE.equals(linkRef)) {
-                            operatoridScope = operatoridLink.getJSONObject(i).getString("href");
-                        }
-                    }
-
-                } catch (JSONException e) {
-                    //redirect to Log in retry URL
-                    String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                    try {
-                        response.sendRedirect(url);
-                    } catch (IOException e1) {
-                        throw new AuthenticationFailedException("response redirection failed. Invalid JSON object returned from the Discovery Server", e1);
-                    }
-                }
-
-                //get scope from authentication Properties or from the response in the Discovery API
-                String scope = getMobileConnectScope(authenticatorProperties, operatoridScope);
-                //get acr values from the authentication properties
-                String acr_values = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES);
-                //retrieve current state
-                String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
-
-                //create oAuthClientrequest to contact the Authorization Endpooint
-                try {
-                    OAuthClientRequest oAuthClientRequest = OAuthClientRequest
-                            .authorizationLocation(authorizationEndpoint)
-                            .setClientId(authorizationClientId)
-                            .setRedirectURI(getCallbackUrl(authenticatorProperties))
-                            .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
-                            .setScope(scope)
-                            .setState(state)
-                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES, acr_values)
-                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
-                            .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT, "ENCR_MSISDN:" + subscriber_id)
-                            .buildQueryMessage();
-
-                    //contact the authorization endpoint
-                    String url = oAuthClientRequest.getLocationUri();
-                    response.sendRedirect(url);
-
-                    //set the context values to be used in the rest of the flow
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT);
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT, tokenEndpoint);
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USERINFO_ENDPOINT, userinfoEndpoint);
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID, authorizationClientId);
-                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET, authorizationSecret);
-
-                } catch (OAuthSystemException | IOException e) {
-                    throw new AuthenticationFailedException("response redirection failed", e);
-                }
-
+                //call this method to decode the response sent from the Discovery Endpoint and connect with the authorization endpoint
+                authenticationEndpoint(context,response);
             }
 
         } else {
@@ -217,6 +139,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
     }
 
+    /**
+     * Process the authentication request sent by the Authorization endpoint
+     */
     @Override
     protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,
                                                  AuthenticationContext context) throws AuthenticationFailedException {
@@ -232,6 +157,95 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             throw new AuthenticationFailedException("Authentication failed", e);
         }
 
+    }
+
+    /**
+     * Handle the response received from the Discovery Endpoint and connect with the Authentication Endpoint
+     */
+    private void authenticationEndpoint(AuthenticationContext context, HttpServletResponse response) throws AuthenticationFailedException {
+
+        //retrieve the properties configured
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+
+        //decode the json object returned from the Discovery API
+        JSONObject jsonObject = (JSONObject) context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
+        String authorizationEndpoint = "";
+        String tokenEndpoint = "";
+        String userinfoEndpoint = "";
+        String operatoridScope = "";
+        String authorizationClientId = "";
+        String authorizationSecret = "";
+        String subscriber_id = "";
+
+        try {
+
+            JSONObject jsonResponse = jsonObject.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_JSON_OBJECT);
+            authorizationClientId = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
+            authorizationSecret = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
+            subscriber_id = jsonResponse.getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
+            JSONObject apis = jsonResponse.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_APIS);
+            JSONObject operatorid = apis.getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_OPERATOR_ID);
+
+            JSONArray operatoridLink = operatorid.getJSONArray(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LINK);
+
+            for (int i = 0; i < operatoridLink.length(); i++) {
+                String linkRef = operatoridLink.getJSONObject(i).getString("rel");
+                if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_AUTHORIZATION.equals(linkRef)) {
+                    authorizationEndpoint = operatoridLink.getJSONObject(i).getString("href");
+                } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_TOKEN.equals(linkRef)) {
+                    tokenEndpoint = operatoridLink.getJSONObject(i).getString("href");
+                } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LINKS_USERINFO.equals(linkRef)) {
+                    userinfoEndpoint = operatoridLink.getJSONObject(i).getString("href");
+                } else if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SCOPE.equals(linkRef)) {
+                    operatoridScope = operatoridLink.getJSONObject(i).getString("href");
+                }
+            }
+
+        } catch (JSONException e) {
+            //redirect to Log in retry URL
+            String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+            try {
+                response.sendRedirect(url);
+            } catch (IOException e1) {
+                throw new AuthenticationFailedException("response redirection failed. Invalid JSON object returned from the Discovery Server", e1);
+            }
+        }
+
+        //get scope from authentication Properties or from the response in the Discovery API
+        String scope = getMobileConnectScope(authenticatorProperties, operatoridScope);
+        //get acr values from the authentication properties
+        String acr_values = authenticatorProperties.get(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES);
+        //retrieve current state
+        String state = context.getContextIdentifier() + "," + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_LOGIN_TYPE;
+
+        //create oAuthClientrequest to contact the Authorization Endpooint
+        try {
+            OAuthClientRequest oAuthClientRequest = OAuthClientRequest
+                    .authorizationLocation(authorizationEndpoint)
+                    .setClientId(authorizationClientId)
+                    .setRedirectURI(getCallbackUrl(authenticatorProperties))
+                    .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
+                    .setScope(scope)
+                    .setState(state)
+                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES, acr_values)
+                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
+                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT, "ENCR_MSISDN:" + subscriber_id)
+                    .buildQueryMessage();
+
+            //contact the authorization endpoint
+            String url = oAuthClientRequest.getLocationUri();
+            response.sendRedirect(url);
+
+            //set the context values to be used in the rest of the flow
+            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS, MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT);
+            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_ENDPOINT, tokenEndpoint);
+            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USERINFO_ENDPOINT, userinfoEndpoint);
+            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID, authorizationClientId);
+            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET, authorizationSecret);
+
+        } catch (OAuthSystemException | IOException e) {
+            throw new AuthenticationFailedException("response redirection failed", e);
+        }
     }
 
 
