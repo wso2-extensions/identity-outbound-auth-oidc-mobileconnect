@@ -35,7 +35,6 @@ public class MobileConnectAuthenticatorServiceComponent {
     protected void activate(ComponentContext ctxt) {
         try {
             MobileConnectAuthenticator authenticator = new MobileConnectAuthenticator();
-//            Hashtable<String, String> props = new Hashtable<String, String>();
             ctxt.getBundleContext().registerService(ApplicationAuthenticator.class.getName(),
                     authenticator, null);
             if (log.isDebugEnabled()) {
