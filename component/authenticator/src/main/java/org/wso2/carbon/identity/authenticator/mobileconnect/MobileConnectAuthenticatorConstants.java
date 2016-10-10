@@ -50,13 +50,14 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_SECRET = "MobileConnectSecret";
     static final String CLAIM_ID = "id";
     static final String DEFAULT_USER_IDENTIFIER = "id";
-    static final String DISCOVERY_API_URL = "http://discovery.sandbox2.mobileconnect.io/v2/discovery";
+    static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
     static final String MOBILE_CONNECT_LOGIN_TYPE = "mobileconnect";
 
     //constants related to session management
     static final String MOBILE_CONNECT_SESSION_DATA_KEY = "sessionDataKey";
-    static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";
+//    static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";
+    static final String MOBILE_CONNECT_CALLBACK_URL = "http://jenkins.wso2telco.com:9763/playground2/oauth2.jsp";
 
     //Constants related to the state of the process
     static final String MOBILE_CONNECT_AUTHORIZATION_ENDPOINT = "authorization_endpoint";
