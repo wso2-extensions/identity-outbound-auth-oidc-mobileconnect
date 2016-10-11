@@ -60,6 +60,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_CALLBACK_URL = "http://jenkins.wso2telco.com:9763/playground2/oauth2.jsp";
 
     //Constants related to the state of the process
+    static final String MOBILE_CONNECT_DISCOVERY_ENDPOINT = "discovery_endpoint";
     static final String MOBILE_CONNECT_AUTHORIZATION_ENDPOINT = "authorization_endpoint";
     static final String MOBILE_CONNECT_TOKEN_ENDPOINT = "token_endpoint";
     static final String MOBILE_CONNECT_USERINFO_ENDPOINT = "userinfo_endpoint";
