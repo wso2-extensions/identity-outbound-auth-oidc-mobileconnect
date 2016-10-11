@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.authenticator.mobileconnect;
 
 /**
  * Class for Constants of the MobileConnect Federated Authenticator
- * Holds the constant string literals required for the MobileConnectAuthenticator.java Class
+ * Holds the constant string literals required for the MobileConnectAuthenticator.java Class.
  */
 class MobileConnectAuthenticatorConstants {
 
