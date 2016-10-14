@@ -55,9 +55,8 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_LOGIN_TYPE = "mobileconnect";
 
     //constants related to session management
-    static final String MOBILE_CONNECT_SESSION_DATA_KEY = "sessionDataKey";
-//    static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";
-    static final String MOBILE_CONNECT_CALLBACK_URL = "http://jenkins.wso2telco.com:9763/playground2/oauth2.jsp";
+    static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";
+    static final String MOBILE_CONNECT_UI_ENDPOINT_URL = "mobileconnectauthenticationendpoint/mobileconnect.jsp";
 
     //Constants related to the state of the process
     static final String MOBILE_CONNECT_DISCOVERY_ENDPOINT = "discovery_endpoint";
@@ -72,16 +71,15 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_DISCOVERY_AUTHORIZATION = "Authorization";
     static final String MOBILE_CONNECT_DISCOVERY_ACCEPT = "Accept";
     static final String MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE = "application/xml";
-    static final String MOBILE_CONNECT_DISCOVERY_CONTENT_TYPE = "Content-Type";
     static final String MOBILE_CONNECT_DISCOVERY_REDIRECT_URL = "Redirect_URL";
     static final String MOBILE_CONNECT_DISCOVERY_JSON_OBJECT = "response";
-    static final String MOBILE_CONNECT_MANUAL_SELECTION = "Manually-Select";
 
     //constants related to the Token endpoint connection
-    static final String MOBILE_CONNECT_ACCESS_TOKEN = "access_token";
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE = "Content-Type";
     static final String MOBILE_CONNECT_TOKEN_CODE = "code";
     static final String MOBILE_CONNECT_USER_INFO_RESPONSE = "jsonString";
+    static final String MOBILE_CONNECT_TOKEN_GRANT_TYPE = "authorization_code";
+    static final String MOBILE_CONNECT_TOKEN_JSON_OBJECT = "token_json_object";
 
     //constants related to OIDC variables
     static final String OIDC_CODE = "code";
