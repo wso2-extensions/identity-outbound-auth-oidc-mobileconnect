@@ -65,6 +65,8 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_TOKEN_ENDPOINT = "token_endpoint";
     static final String MOBILE_CONNECT_USERINFO_ENDPOINT = "userinfo_endpoint";
     static final String MOBILE_CONNECT_FLOW_STATUS = "flowStatus";
+    static final String MOBILE_CONNECT_UI_STATUS = "UI_status";
+    static final String MOBILE_CONNECT_COMPLETE = "complete";
 
     //constants related to Discovery API Connection
     static final String MOBILE_CONNECT_DISCOVERY_AUTHORIZATION = "Authorization";
@@ -80,5 +82,11 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE = "Content-Type";
     static final String MOBILE_CONNECT_TOKEN_CODE = "code";
     static final String MOBILE_CONNECT_USER_INFO_RESPONSE = "jsonString";
+
+    //constants related to OIDC variables
+    static final String OIDC_CODE = "code";
+    static final String OIDC_STATE = "state";
+    static final String OIDC_ERROR = "error";
+
 
 }
