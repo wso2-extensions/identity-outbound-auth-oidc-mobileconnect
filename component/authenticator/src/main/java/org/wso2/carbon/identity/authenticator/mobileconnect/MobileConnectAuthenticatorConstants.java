@@ -56,7 +56,7 @@ class MobileConnectAuthenticatorConstants {
 
     //constants related to session management
     static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";
-    static final String MOBILE_CONNECT_UI_ENDPOINT_URL = "mobileconnectauthenticationendpoint/mobileconnect.jsp";
+    static final String MOBILE_CONNECT_UI_ENDPOINT_URL = "MCAuthenticationEndpointURL";
 
     //Constants related to the state of the process
     static final String MOBILE_CONNECT_DISCOVERY_ENDPOINT = "discovery_endpoint";
