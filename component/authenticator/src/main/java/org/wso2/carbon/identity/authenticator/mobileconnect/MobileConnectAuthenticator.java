@@ -222,11 +222,27 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //get jsonString object from the context
         String jsonObject = (String) context.
                 getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE);
+
+
+        JSONObject json = (JSONObject) context.
+                getProperty("json");
+
+        String msisdn = null;
         try {
-            buildClaims(context, jsonObject);
-        } catch (ApplicationAuthenticatorException e) {
+            msisdn = json.getString("msisdn");
+        } catch (JSONException e) {
             throw new AuthenticationFailedException("Authentication failed", e);
         }
+
+            AuthenticatedUser authenticatedUser =
+                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
+            context.setSubject(authenticatedUser);
+
+//        try {
+//            buildClaims(context, jsonObject);
+//        } catch (ApplicationAuthenticatorException e) {
+//            throw new AuthenticationFailedException("Authentication failed", e);
+//        }
 
     }
 
@@ -518,7 +534,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE);
 
             //if the connection is unauthorized
-            if (connection.getResponseCode() == 401) {
+            if (connection.getResponseCode() == 401 || connection.getResponseCode() == 400) {
                 String retryURL = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
                 try {
                     response.sendRedirect(retryURL);
@@ -608,10 +624,14 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE,
                     "{'fullName' : '" + msisdn + "'} ");
+            context.setProperty("json" , jsonUserInfo);
+//            AuthenticatedUser authenticatedUser =
+//                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
+//            context.setSubject(authenticatedUser);
 
         } catch (IOException | JSONException e) {
             throw new AuthenticationFailedException("Authentication Error when contacting the userinfo endpoint", e);
-        } finally {
+            } finally {
             if (bufferedReader != null) {
                 bufferedReader.close();
             }
