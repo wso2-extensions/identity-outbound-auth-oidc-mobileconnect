@@ -382,6 +382,7 @@
 
     <modules>
         <module>component/authenticator</module>
+        <module>component/authentication-endpoint</module>
         <module>feature/org.wso2.carbon.identity.authenticator.mobileconnect.server.feature</module>
     </modules>
 
