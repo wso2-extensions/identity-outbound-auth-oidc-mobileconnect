@@ -46,7 +46,6 @@ class MobileConnectAuthenticatorConstants {
     static final String AUTHENTICATOR_FRIENDLY_NAME = "Mobile Connect";
     static final String MOBILE_CONNECT_API_KEY = "APIKey";
     static final String MOBILE_CONNECT_AUTHENTICATION_TYPE = "authenticationType";
-    static final String MOBILE_CONNECT_MSISDN_UI = "msisdn_ui_check";
     static final String MOBILE_CONNECT_API_SECRET = "APISecret";
     static final String MOBILE_CONNECT_KEY = "MobileConnectKey";
     static final String MOBILE_CONNECT_SECRET = "MobileConnectSecret";
@@ -92,6 +91,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_USER_INFO_RESPONSE = "jsonString";
     static final String MOBILE_CONNECT_TOKEN_GRANT_TYPE = "authorization_code";
     static final String MOBILE_CONNECT_TOKEN_JSON_OBJECT = "token_json_object";
+    static final String MOBILE_CONNECT_USER_INFO_JSON_OBJECT = "user_info_json_object";
 
     //constants related to OIDC variables
     static final String OIDC_CODE = "code";
