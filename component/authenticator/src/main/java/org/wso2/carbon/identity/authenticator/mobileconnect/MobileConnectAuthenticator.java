@@ -52,8 +52,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -157,42 +155,47 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                         (MobileConnectAuthenticatorConstants.
                         MOBILE_CONNECT_FLOW_STATUS))) {
 
-                    String kkk = request.getParameter("mcc_mnc");
-                    String mcc = kkk.substring(0 , 3);
-                    String mnc = kkk.substring(4);
+                    //retrieve mcc_mnc from the request
+                    String mccmncValue = request.getParameter(MobileConnectAuthenticatorConstants.
+                            MOBILE_CONNECT_MCC_MNC);
+                    //retrieve mcc and mnc from above string
+                    String mcc = mccmncValue.substring(0 , 3);
+                    String mnc = mccmncValue.substring(4);
 
-                    String url = "https://discover.mobileconnect" +
-                            ".io/gsma/v2/discovery?Identified-MCC=" + mcc + "&Identified-MNC=" + mnc +
-                            "&Redirect_URL=" +
-                            "https://localhost:9443/commonauth&Ignore-Cookies=true";
+                    //call the discovery endpoint with the mcc and mnc
+                    String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_IDENTTIFIED_MCC + "=" + mcc +
+                            "&" + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_IDENTTIFIED_MNC + "=" +
+                            mnc +
+                            "&" + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
+                            getCallbackUrl(authenticatorProperties);
 
                     URL obj = null;
-                    try {
-                        obj = new URL(url);
-                    } catch (MalformedURLException e) {
-                        throw new AuthenticationFailedException("k");
-                    }
                     HttpURLConnection connection = null;
+
                     try {
+                        //create URL object
+                        obj = new URL(url);
                         connection = (HttpURLConnection) obj.openConnection();
-                    } catch (IOException e) {
-                        throw new AuthenticationFailedException("k");
-                    }
 
-                    try {
                         connection.setRequestMethod("GET");
-                    } catch (ProtocolException e) {
-                        throw new AuthenticationFailedException("k");
-                    }
-                    connection.setRequestProperty(MobileConnectAuthenticatorConstants.
-                                    MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
-                            authorizationHeader);
-                    connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
-                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-                    connection.setDoOutput(true);
-                    try {
+                        //attach headers
+                        connection.setRequestProperty(MobileConnectAuthenticatorConstants.
+                                        MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+                                authorizationHeader);
+                        connection.setRequestProperty(MobileConnectAuthenticatorConstants.
+                                        MOBILE_CONNECT_DISCOVERY_ACCEPT,
+                                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+                        connection.setDoOutput(true);
 
+                    } catch (IOException e) {
+                        throw new AuthenticationFailedException("connection to Discovery API failed" , e);
+                    }
+
+                    try {
+                        //get response from HttpURLConnection
                         int responseCode = connection.getResponseCode();
+
                         //if 200 OK
                         if (responseCode == 200) {
 
@@ -225,24 +228,24 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             log.info("MSISDN is invalid. Redirecting to mobile connect interface");
                         } else if (responseCode == 401) {
                             //if 401 unauthorized
-                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                            response.sendRedirect(url2);
+                            String retryURL = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(retryURL);
                             log.error("No Authorization or Bad Session");
                         } else if (responseCode == 404) {
                             //if 404, not found
-                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                            response.sendRedirect(url2);
+                            String retryURL = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(retryURL);
                             log.error("Bad MSISDN is supplied");
                         } else if (responseCode == 400) {
                             //if 400 bad request
-                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                            response.sendRedirect(url2);
+                            String retryURL = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(retryURL);
                             log.error("Bad MSISDN is supplied");
                         }
                     } catch (IOException e) {
-                        throw new AuthenticationFailedException("");
+                        throw new AuthenticationFailedException("redirection to Retry URL failed" , e);
                     } catch (JSONException e) {
-                        throw new AuthenticationFailedException("");
+                        throw new AuthenticationFailedException("Parsing the JSON object failed" , e);
                     }
 
                     if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT.equals(context.
@@ -266,13 +269,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
                 }
 
-
-
-
-//                }
-
-
-
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("Error while retrieving properties. Authenticator Properties cannot be null");
@@ -280,6 +276,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 throw new AuthenticationFailedException(" Authenticator Properties cannot be null");
             }
 
+            //execute this section if the Authentication Type is Off-Net
         } else if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_OFF_NET).equals(authenticationType)) {
             if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null) {
 
@@ -393,32 +390,56 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             AuthenticationFailedException {
 
         try {
-            HttpResponse httpResponse = discoveryProcess2(authorizationHeader);
+            //call the Discovery API to get the redirect URL
+            HttpResponse httpResponse = operatorSelectionDiscoveryCall(authorizationHeader);
+            //get the 302 redirect URL from the headers of the HttpResponse
             String url = httpResponse.getHeaders("location")[0].toString().substring(10);
 
-            String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
-                    context.getCallerSessionKey(), context.getContextIdentifier());
-            String subStr = queryParams.substring(queryParams
-                    .indexOf("sessionDataKey" + "="));
-            String sessionDK = subStr.substring(subStr.indexOf("sessionDataKey"
-                    + "="), subStr.indexOf("&")).replace(("sessionDataKey" + "=")
-                    , "");
+            //get session data key
+            String sessionDK = getSessionDataKey(context);
 
-            request.getSession().setAttribute("sessionDataKey", sessionDK);
+            //set Session Data Key to the request
+            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_SESSION_DATAKEY , sessionDK);
+            //call the operator selection UI
             response.sendRedirect(url);
 
         } catch (IOException e) {
-            throw new AuthenticationFailedException("l");
+            throw new AuthenticationFailedException("Redirect to Operator Selection UI failed" , e);
         }
     }
 
+    /**
+     * Return the Session Data Key when needed.
+     */
+    public String getSessionDataKey(AuthenticationContext context) {
+
+        //create Session Data Key for the context
+        String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
+                context.getCallerSessionKey(), context.getContextIdentifier());
+        String subStr = queryParams.substring(queryParams
+                .indexOf(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATAKEY + "="));
+
+        return subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.
+                MOBILE_CONNECT_SESSION_DATAKEY
+                + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.
+                        MOBILE_CONNECT_SESSION_DATAKEY  + "=")
+                , "");
+    }
+
+    /**
+     * Return the context identifier when needed.
+     */
     public String getContextIdentifier(HttpServletRequest request) {
-        if (request.getSession().getAttribute("contextIdentifier") == null) {
-            request.getSession().setAttribute("contextIdentifier",
-                    request.getParameter("sessionDataKey"));
-            return (String) request.getSession().getAttribute("sessionDataKey");
+        if (request.getSession().getAttribute(MobileConnectAuthenticatorConstants.
+                MOBILE_CONNECT_CONTEXT_IDENTIFIER) == null) {
+            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CONTEXT_IDENTIFIER,
+                    request.getParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_SESSION_DATAKEY));
+            return (String) request.getSession().getAttribute(MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_SESSION_DATAKEY);
         } else {
-            return (String) request.getSession().getAttribute("contextIdentifier");
+            return (String) request.getSession().getAttribute(MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_CONTEXT_IDENTIFIER);
         }
     }
 
@@ -922,7 +943,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
     }
 
-    public HttpResponse discoveryProcess2(String authorizationHeader) throws IOException {
+    public HttpResponse operatorSelectionDiscoveryCall(String authorizationHeader) throws IOException {
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;

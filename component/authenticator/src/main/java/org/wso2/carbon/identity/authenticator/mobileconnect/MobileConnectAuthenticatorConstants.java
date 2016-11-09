@@ -81,6 +81,10 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_DISCOVERY_JSON_OBJECT = "response";
     static final String MOBILE_CONNECT_ON_NET = "on-net";
     static final String MOBILE_CONNECT_OFF_NET = "off-net";
+    static final String MOBILE_CONNECT_SESSION_DATAKEY  = "sessionDataKey";
+    static final String MOBILE_CONNECT_CONTEXT_IDENTIFIER  = "contextIdentifier";
+    static final String MOBILE_CONNECT_IDENTTIFIED_MCC  = "Identified-MCC";
+    static final String MOBILE_CONNECT_IDENTTIFIED_MNC  = "Identified-MNC";
 
     //constants related to the Token endpoint connection
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE = "Content-Type";
