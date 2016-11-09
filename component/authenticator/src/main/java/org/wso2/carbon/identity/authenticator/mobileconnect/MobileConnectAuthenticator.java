@@ -52,6 +52,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -83,6 +85,22 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                         .MOBILE_CONNECT_UI_STATUS))) {
             request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_UI_STATUS, "");
             return true;
+
+        } else if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_OPERATOR_SELECTION_DONE.
+                equals(request.getSession().getAttribute(MobileConnectAuthenticatorConstants.
+                        MOBILE_CONNECT_OPERATOR_SELECTION_STATUS)))) {
+            //to check whetehr the operator selection process is completed
+            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_OPERATOR_SELECTION_STATUS, "");
+            return false;
+
+        } else if (request.getParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MCC_MNC) != null) {
+            //to check if the request is carrying a mcc_mnc parameter
+            request.getSession().setAttribute(MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_OPERATOR_SELECTION_STATUS, MobileConnectAuthenticatorConstants.
+                    MOBILE_CONNECT_OPERATOR_SELECTION_DONE);
+            return true;
+
         } else {
             //return false if OIDC authorization process is incomplete
             return request.getParameter(MobileConnectAuthenticatorConstants.OIDC_CODE) != null && request.getParameter
@@ -112,56 +130,19 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                                                  AuthenticationContext context)
             throws AuthenticationFailedException {
 
-        if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null) {
+        //retrieve the properties configured
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+        //retrieve the authentication type for mobile connect
+        String authenticationType = authenticatorProperties.get(MobileConnectAuthenticatorConstants.
+                MOBILE_CONNECT_AUTHENTICATION_TYPE);
 
-            //retrieve the url of the UI from the Configuration Files
-            String login = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants
-                    .MOBILE_CONNECT_UI_ENDPOINT_URL);
-
-            String loginPage = "";
-            if (StringUtils.isNotEmpty(login)) {
-                loginPage = ConfigurationFacade.getInstance().getAuthenticationEndpointURL()
-                        .replace("authenticationendpoint/login.do", login);
-            }
-            //get query parameter from the context
-            String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
-                    context.getCallerSessionKey(), context.getContextIdentifier());
-
-            //if the context is in retrying stage
-            String retryParam = "";
-            if (context.isRetrying()) {
-                retryParam = "&authFailure=true&authFailureMsg=login.fail.message";
-            }
-
-            try {
-                //set this status to notify the controller that the UI stage is completed
-                request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_UI_STATUS,
-                        MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMPLETE);
-                //redirect to the UI page
-                response.sendRedirect(response.encodeRedirectURL(loginPage + ("?" + queryParams)) + "&authenticators="
-                        + getName() + retryParam);
-            } catch (IOException e) {
-                throw new AuthenticationFailedException("Authentication failed!", e);
-
-            }
-            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
-                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT);
-
-        } else {
-
-            //check whether the msisdn is sent by the service provider
-            String msisdn = request.getParameter("msisdn");
-
-            //retrieve the properties configured
-            Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+        if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_ON_NET).equals(authenticationType)) {
 
             //this is null, if no such properties are defined in the IS as an IDPqq
             if (authenticatorProperties != null) {
 
-                //MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS is the property set by the IDP, to keep
-                // track of the authentication process
-                if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) ==
-                        MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT) {
+                    context.setProperty(MobileConnectAuthenticatorConstants.
+                            MOBILE_CONNECT_UI_PROMPT , "true");
 
                     //get the mobile connect key and secret
                     String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
@@ -172,30 +153,125 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     String authorizationHeader = "Basic " + Base64Utils.
                             encode(userpass.getBytes(StandardCharsets.UTF_8));
 
+                if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MCC_MNC).equals(context.getProperty
+                        (MobileConnectAuthenticatorConstants.
+                        MOBILE_CONNECT_FLOW_STATUS))) {
+
+                    String kkk = request.getParameter("mcc_mnc");
+                    String mcc = kkk.substring(0 , 3);
+                    String mnc = kkk.substring(4);
+
+                    String url = "https://discover.mobileconnect" +
+                            ".io/gsma/v2/discovery?Identified-MCC=" + mcc + "&Identified-MNC=" + mnc +
+                            "&Redirect_URL=" +
+                            "https://localhost:9443/commonauth&Ignore-Cookies=true";
+
+                    URL obj = null;
+                    try {
+                        obj = new URL(url);
+                    } catch (MalformedURLException e) {
+                        throw new AuthenticationFailedException("k");
+                    }
+                    HttpURLConnection connection = null;
+                    try {
+                        connection = (HttpURLConnection) obj.openConnection();
+                    } catch (IOException e) {
+                        throw new AuthenticationFailedException("k");
+                    }
 
                     try {
-                        //carryout the process of connecting the Discovery Endpoint
-                        discoveryEndpointConnect(authorizationHeader, msisdn, context,
-                                response);
-                    } catch (JSONException e) {
-                        //redirect to Log in retry URL
-                        String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                        try {
-                            response.sendRedirect(url);
-                            throw new AuthenticationFailedException("Invalid JSON object returned", e);
-                        } catch (IOException e1) {
-                            throw new AuthenticationFailedException("response redirection failed", e1);
-                        }
+                        connection.setRequestMethod("GET");
+                    } catch (ProtocolException e) {
+                        throw new AuthenticationFailedException("k");
                     }
+                    connection.setRequestProperty(MobileConnectAuthenticatorConstants.
+                                    MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+                            authorizationHeader);
+                    connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
+                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+                    connection.setDoOutput(true);
+                    try {
+
+                        int responseCode = connection.getResponseCode();
+                        //if 200 OK
+                        if (responseCode == 200) {
+
+                            //read the response sent by the server
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.
+                                    getInputStream(),
+                                    StandardCharsets.UTF_8));
+                            StringBuilder stringBuilder = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                stringBuilder.append(line);
+                            }
+                            String responseString = stringBuilder.toString();
+                            reader.close();
+                            JSONObject jsonObject = new JSONObject(responseString);
+                            context.setProperty(MobileConnectAuthenticatorConstants.
+                                            MOBILE_CONNECT_DISCOVERY_JSON_OBJECT,
+                                    jsonObject);
+                            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
+                                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
+                            log.info("MSISDN is valid. Discovery Endpoint authorization successful");
+
+
+                        } else if (responseCode == 302) {
+                            //if 302, move temporarily
+                            String redirectUrl = connection.getHeaderField("location");
+                            response.sendRedirect(redirectUrl);
+                            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
+                                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT);
+                            log.info("MSISDN is invalid. Redirecting to mobile connect interface");
+                        } else if (responseCode == 401) {
+                            //if 401 unauthorized
+                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(url2);
+                            log.error("No Authorization or Bad Session");
+                        } else if (responseCode == 404) {
+                            //if 404, not found
+                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(url2);
+                            log.error("Bad MSISDN is supplied");
+                        } else if (responseCode == 400) {
+                            //if 400 bad request
+                            String url2 = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            response.sendRedirect(url2);
+                            log.error("Bad MSISDN is supplied");
+                        }
+                    } catch (IOException e) {
+                        throw new AuthenticationFailedException("");
+                    } catch (JSONException e) {
+                        throw new AuthenticationFailedException("");
+                    }
+
+                    if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT.equals(context.
+                            getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS))) {
+
+                        //call this method to decode the response sent from the Discovery Endpoint and connect with the
+                        // authorization endpoint
+                        authenticationEndpoint(context, response);
+                    }
+
+
+                } else {
+
+                    //carryout the process of connecting the Discovery Endpoint for on-net Operator Selection
+                    operatorSelectionProcess(authorizationHeader, context,
+                            response, request);
+
+                    //set property in context to ensure that operator selection is being carried out in the flow
+                    context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
+                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MCC_MNC);
+
                 }
 
-                if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT.equals(context.
-                        getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS))) {
 
-                    //call this method to decode the response sent from the Discovery Endpoint and connect with the
-                    // authorization endpoint
-                    authenticationEndpoint(context, response);
-                }
+
+
+//                }
+
+
 
             } else {
                 if (log.isDebugEnabled()) {
@@ -203,9 +279,147 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 }
                 throw new AuthenticationFailedException(" Authenticator Properties cannot be null");
             }
+
+        } else if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_OFF_NET).equals(authenticationType)) {
+            if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null) {
+
+                //retrieve the url of the UI from the Configuration Files
+                String login = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants
+                        .MOBILE_CONNECT_UI_ENDPOINT_URL);
+
+                String loginPage = "";
+                if (StringUtils.isNotEmpty(login)) {
+                    loginPage = ConfigurationFacade.getInstance().getAuthenticationEndpointURL()
+                            .replace("authenticationendpoint/login.do", login);
+                }
+                //get query parameter from the context
+                String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
+                        context.getCallerSessionKey(), context.getContextIdentifier());
+
+                //if the context is in retrying stage
+                String retryParam = "";
+                if (context.isRetrying()) {
+                    retryParam = "&authFailure=true&authFailureMsg=login.fail.message";
+                }
+
+                try {
+                    //set this status to notify the controller that the UI stage is completed
+                    request.getSession().setAttribute(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_UI_STATUS,
+                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_COMPLETE);
+                    //redirect to the UI page
+                    response.sendRedirect(response.encodeRedirectURL(loginPage +
+                            ("?" + queryParams)) + "&authenticators="
+                            + getName() + retryParam);
+                } catch (IOException e) {
+                    throw new AuthenticationFailedException("Authentication failed!", e);
+
+                }
+                context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
+                        MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT);
+
+            } else {
+
+                //check whether the msisdn is sent by the service provider
+                String msisdn = request.getParameter("msisdn");
+
+                //retrieve the properties configured
+                authenticatorProperties = context.getAuthenticatorProperties();
+
+                //this is null, if no such properties are defined in the IS as an IDPqq
+                if (authenticatorProperties != null) {
+
+                    //MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLO
+                    // W_STATUS is the property set by the IDP, to keep
+                    // track of the authentication process
+                    if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) ==
+                            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT) {
+
+                        //get the mobile connect key and secret
+                        String mobileConnectKey = getMobileConnectAPIKey(authenticatorProperties);
+                        String mobileConnectSecret = getMobileConnectAPISecret(authenticatorProperties);
+
+                        //Base 64 encode the key and secret to attach as the header for URL connections
+                        String userpass = mobileConnectKey + ":" + mobileConnectSecret;
+                        String authorizationHeader = "Basic " + Base64Utils.
+                                encode(userpass.getBytes(StandardCharsets.UTF_8));
+
+
+                        try {
+                            //carryout the process of connecting the Discovery Endpoint
+                            discoveryEndpointConnect(authorizationHeader, msisdn, context,
+                                    response, authorizationHeader);
+                        } catch (JSONException e) {
+                            //redirect to Log in retry URL
+                            String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+                            try {
+                                response.sendRedirect(url);
+                                throw new AuthenticationFailedException("Invalid JSON object returned", e);
+                            } catch (IOException e1) {
+                                throw new AuthenticationFailedException("response redirection failed", e1);
+                            }
+                        }
+                    }
+
+                    if (MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ENDPOINT.equals(context.
+                            getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS))) {
+
+                        //call this method to decode the response sent from the Discovery Endpoint and connect with the
+                        // authorization endpoint
+                        authenticationEndpoint(context, response);
+                    }
+
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Error while retrieving properties. Authenticator Properties cannot be null");
+                    }
+                    throw new AuthenticationFailedException(" Authenticator Properties cannot be null");
+                }
+            }
+
+        } else {
+            throw new AuthenticationFailedException("Authentication type is not configured properly in the IS " +
+                    "management console");
         }
 
 
+
+    }
+
+    /**
+     * Call the Discovery Endpoint in On-Net Scenario.
+     */
+    public void operatorSelectionProcess(String authorizationHeader, AuthenticationContext context,
+                                         HttpServletResponse response, HttpServletRequest request) throws
+            AuthenticationFailedException {
+
+        try {
+            HttpResponse httpResponse = discoveryProcess2(authorizationHeader);
+            String url = httpResponse.getHeaders("location")[0].toString().substring(10);
+
+            String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
+                    context.getCallerSessionKey(), context.getContextIdentifier());
+            String subStr = queryParams.substring(queryParams
+                    .indexOf("sessionDataKey" + "="));
+            String sessionDK = subStr.substring(subStr.indexOf("sessionDataKey"
+                    + "="), subStr.indexOf("&")).replace(("sessionDataKey" + "=")
+                    , "");
+
+            request.getSession().setAttribute("sessionDataKey", sessionDK);
+            response.sendRedirect(url);
+
+        } catch (IOException e) {
+            throw new AuthenticationFailedException("l");
+        }
+    }
+
+    public String getContextIdentifier(HttpServletRequest request) {
+        if (request.getSession().getAttribute("contextIdentifier") == null) {
+            request.getSession().setAttribute("contextIdentifier",
+                    request.getParameter("sessionDataKey"));
+            return (String) request.getSession().getAttribute("sessionDataKey");
+        } else {
+            return (String) request.getSession().getAttribute("contextIdentifier");
+        }
     }
 
     /**
@@ -264,7 +478,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String operatoridScope = "";
         String authorizationClientId;
         String authorizationSecret;
-        String subscriberId;
+        String subscriberId = "";
+
+        String uiPromptStatus = (String) context.getProperty(MobileConnectAuthenticatorConstants
+                .MOBILE_CONNECT_UI_PROMPT);
 
         try {
 
@@ -274,8 +491,12 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_ID);
             authorizationSecret = jsonResponse.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
-            subscriberId = jsonObject.
+
+            if (!("true").equals(uiPromptStatus)) {
+                            subscriberId = jsonObject.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
+            }
+
             JSONObject apis = jsonResponse.
                     getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_APIS);
             JSONObject operatorid = apis.
@@ -320,19 +541,40 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         //create oAuthClientrequest to contact the Authorization Endpooint
         try {
-            OAuthClientRequest oAuthClientRequest = OAuthClientRequest
-                    .authorizationLocation(authorizationEndpoint)
-                    .setClientId(authorizationClientId)
-                    .setRedirectURI("https://localhost:9443/commonauth")
-                    .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
-                    .setScope(scope)
-                    .setState(state)
-                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES,
-                            acrValues)
-                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
+            OAuthClientRequest oAuthClientRequest = null;
+
+            if (!("true").equals(uiPromptStatus)) {
+
+                oAuthClientRequest = OAuthClientRequest
+                        .authorizationLocation(authorizationEndpoint)
+                        .setClientId(authorizationClientId)
+                        .setRedirectURI("https://localhost:9443/commonauth")
+                        .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
+                        .setScope(scope)
+                        .setState(state)
+                        .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES,
+                                acrValues)
+                        .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
                     .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT,
                             "ENCR_MSISDN:" + subscriberId)
-                    .buildQueryMessage();
+                        .buildQueryMessage();
+
+            } else {
+
+                oAuthClientRequest = OAuthClientRequest
+                        .authorizationLocation(authorizationEndpoint)
+                        .setClientId(authorizationClientId)
+                        .setRedirectURI("https://localhost:9443/commonauth")
+                        .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
+                        .setScope(scope)
+                        .setState(state)
+                        .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES,
+                                acrValues)
+                        .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
+                        .buildQueryMessage();
+
+            }
+
 
             //contact the authorization endpoint
             String url = oAuthClientRequest.getLocationUri();
@@ -359,8 +601,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
      */
     private void discoveryEndpointConnect(String basicAuth, String msisdn,
                                           AuthenticationContext context,
-                                          HttpServletResponse response) throws JSONException,
+                                          HttpServletResponse response , String authorizationHeader)
+            throws JSONException,
             AuthenticationFailedException {
+
 
         try {
 
@@ -373,6 +617,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //if 200 OK
             if (responseCode == 200) {
+
+
 
                 //read the response sent by the server
                 BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),
@@ -622,8 +868,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             String msisdn = jsonUserInfo.getString("msisdn");
 
-            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE,
-                    "{'fullName' : '" + msisdn + "'} ");
+//            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE,
+//                    "{'fullName' : '" + msisdn + "'} ");
             context.setProperty("json" , jsonUserInfo);
 //            AuthenticatedUser authenticatedUser =
 //                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
@@ -662,11 +908,60 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     private HttpResponse connectURL_get(HttpGet request)
             throws IOException {
 
+//        HttpParams params = new BasicHttpParams();
+//        params.setParameter("http.protocol.handle-redirects", false);
+//        request.setParams(params);
+
+//        HttpParams params = request.getParams();
+//        params.setParameter(ClientPNames.HANDLE_REDIRECTS, Boolean.FALSE);
+//        request.setParams(params);
         //execute the HttpGet request and return a HttpResponse
-        CloseableHttpClient client = HttpClientBuilder.create().build();
+        CloseableHttpClient client = HttpClientBuilder.create().disableRedirectHandling().build();
 
         return client.execute(request);
 
+    }
+
+    public HttpResponse discoveryProcess2(String authorizationHeader) throws IOException {
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
+
+//        //body parameters for the API call
+//        String data = "MSISDN=" + msisdn;
+//
+//        URL obj = new URL(url);
+//        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
+//
+//        connection.setRequestMethod("GET");
+//        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+//                authorizationHeader);
+//        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
+//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+//        connection.setDoOutput(true);
+
+//        //write data to the body of the connection
+//        DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
+//        outputStream.writeBytes(data);
+//        outputStream.close();
+
+        HttpGet httpGet = new HttpGet(url);
+
+        //add header values required
+        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+                authorizationHeader);
+        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
+                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+
+        //connect to the user info endpoint
+        HttpResponse urlResponse = connectURL_get(httpGet);
+//        BufferedReader br = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
+//        String line;
+//        while ((line = br.readLine()) != null) {
+//            log.info(line);
+//        }
+
+        return urlResponse;
     }
 
     /**
@@ -699,6 +994,47 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         outputStream.close();
 
         return connection;
+
+
+//        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
+//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
+//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
+//
+////        //body parameters for the API call
+////        String data = "MSISDN=" + msisdn;
+////
+////        URL obj = new URL(url);
+////        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
+////
+////        connection.setRequestMethod("GET");
+////        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+////                authorizationHeader);
+////        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
+////                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+////        connection.setDoOutput(true);
+//
+////        //write data to the body of the connection
+////        DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
+////        outputStream.writeBytes(data);
+////        outputStream.close();
+//
+//        HttpGet httpGet = new HttpGet(url);
+//
+//        //add header values required
+//        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
+//                authorizationHeader);
+//        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
+//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
+//
+//        //connect to the user info endpoint
+//        HttpResponse urlResponse = connectURL_get(httpGet);
+////        BufferedReader br = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
+////        String line;
+////        while ((line = br.readLine()) != null) {
+////            log.info(line);
+////        }
+//
+//        return urlResponse;
 
     }
 
@@ -803,13 +1139,24 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         List<Property> configProperties = new ArrayList<>();
 
+        //set the mobile connect Authentication type
+        Property authenticationType = new Property();
+        authenticationType.setName(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHENTICATION_TYPE);
+        authenticationType.setDisplayName("Mobile Connect Authentication Type");
+        authenticationType.setRequired(false);
+        authenticationType.setValue("on-net");
+        authenticationType.setDescription("Type 'on-net' or 'off-net' to use relevant authentication type");
+        authenticationType.setDisplayOrder(0);
+        configProperties.add(authenticationType);
+
         //set the mobile connect key input field
         Property mobileConnectKey = new Property();
         mobileConnectKey.setName(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_API_KEY);
         mobileConnectKey.setDisplayName("Mobile Connect Key");
         mobileConnectKey.setRequired(false);
+        mobileConnectKey.setConfidential(true);
         mobileConnectKey.setDescription("Enter the Mobile Connect Key of the Mobile Connect Application Account");
-        mobileConnectKey.setDisplayOrder(0);
+        mobileConnectKey.setDisplayOrder(1);
         configProperties.add(mobileConnectKey);
 
         //set the mobile connect secret input field
@@ -819,7 +1166,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         mobileConnectSecret.setRequired(false);
         mobileConnectSecret.setConfidential(true);
         mobileConnectSecret.setDescription("Enter the Mobile Connect Secret of the Mobile Connect Application Account");
-        mobileConnectSecret.setDisplayOrder(1);
+        mobileConnectSecret.setDisplayOrder(2);
         configProperties.add(mobileConnectSecret);
 
         //set the mobile connect scope input field
@@ -829,7 +1176,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         mobileConnectScope.setRequired(true);
         mobileConnectScope.setValue("openid");
         mobileConnectScope.setDescription("Enter the Mobile Connect Scope Required");
-        mobileConnectScope.setDisplayOrder(2);
+        mobileConnectScope.setDisplayOrder(3);
         configProperties.add(mobileConnectScope);
 
         //set the mobile connect arc values
@@ -839,7 +1186,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         mobileConnectAcrValues.setRequired(true);
         mobileConnectAcrValues.setValue("2");
         mobileConnectAcrValues.setDescription("Enter the Mobile Connect ACR Values required");
-        mobileConnectAcrValues.setDisplayOrder(3);
+        mobileConnectAcrValues.setDisplayOrder(4);
         configProperties.add(mobileConnectAcrValues);
 
         return configProperties;
