@@ -325,9 +325,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 //this is null, if no such properties are defined in the IS as an IDPqq
                 if (authenticatorProperties != null) {
 
-                    //MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLO
-                    // W_STATUS is the property set by the IDP, to keep
-                    // track of the authentication process
+                    //MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS is the property set by the IDP,
+                    // to keep track of the authentication process
                     if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) ==
                             MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT) {
 
@@ -501,6 +500,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String authorizationSecret;
         String subscriberId = "";
 
+        //this is maintained to check whether the authentication type is on-net or off-net
         String uiPromptStatus = (String) context.getProperty(MobileConnectAuthenticatorConstants
                 .MOBILE_CONNECT_UI_PROMPT);
 
@@ -513,6 +513,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             authorizationSecret = jsonResponse.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
 
+            //retrieve subscriberid if off-net
             if (!("true").equals(uiPromptStatus)) {
                             subscriberId = jsonObject.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
@@ -564,12 +565,13 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         try {
             OAuthClientRequest oAuthClientRequest = null;
 
+            //set subscriberId if off-net
             if (!("true").equals(uiPromptStatus)) {
 
                 oAuthClientRequest = OAuthClientRequest
                         .authorizationLocation(authorizationEndpoint)
                         .setClientId(authorizationClientId)
-                        .setRedirectURI("https://localhost:9443/commonauth")
+                        .setRedirectURI(getCallbackUrl(authenticatorProperties))
                         .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
                         .setScope(scope)
                         .setState(state)
@@ -580,12 +582,13 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             "ENCR_MSISDN:" + subscriberId)
                         .buildQueryMessage();
 
+                //Do not set subscriberId if off-net
             } else {
 
                 oAuthClientRequest = OAuthClientRequest
                         .authorizationLocation(authorizationEndpoint)
                         .setClientId(authorizationClientId)
-                        .setRedirectURI("https://localhost:9443/commonauth")
+                        .setRedirectURI(getCallbackUrl(authenticatorProperties))
                         .setResponseType(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_RESPONSE_TYPE)
                         .setScope(scope)
                         .setState(state)
@@ -629,7 +632,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         try {
 
-
             //call this method to retrieve a HttpURLConnection object
             HttpURLConnection connection = discoveryProcess(basicAuth, msisdn);
 
@@ -638,8 +640,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //if 200 OK
             if (responseCode == 200) {
-
-
 
                 //read the response sent by the server
                 BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),
@@ -929,14 +929,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     private HttpResponse connectURL_get(HttpGet request)
             throws IOException {
 
-//        HttpParams params = new BasicHttpParams();
-//        params.setParameter("http.protocol.handle-redirects", false);
-//        request.setParams(params);
-
-//        HttpParams params = request.getParams();
-//        params.setParameter(ClientPNames.HANDLE_REDIRECTS, Boolean.FALSE);
-//        request.setParams(params);
-        //execute the HttpGet request and return a HttpResponse
+        //create client while disabling Redirect handling
         CloseableHttpClient client = HttpClientBuilder.create().disableRedirectHandling().build();
 
         return client.execute(request);
@@ -944,27 +937,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     }
 
     public HttpResponse operatorSelectionDiscoveryCall(String authorizationHeader) throws IOException {
+
+        //url to call the Discovery API endpoint for operator selection URL
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
-
-//        //body parameters for the API call
-//        String data = "MSISDN=" + msisdn;
-//
-//        URL obj = new URL(url);
-//        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
-//
-//        connection.setRequestMethod("GET");
-//        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
-//                authorizationHeader);
-//        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
-//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-//        connection.setDoOutput(true);
-
-//        //write data to the body of the connection
-//        DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
-//        outputStream.writeBytes(data);
-//        outputStream.close();
 
         HttpGet httpGet = new HttpGet(url);
 
@@ -976,11 +953,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         //connect to the user info endpoint
         HttpResponse urlResponse = connectURL_get(httpGet);
-//        BufferedReader br = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//            log.info(line);
-//        }
 
         return urlResponse;
     }
@@ -1015,48 +987,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         outputStream.close();
 
         return connection;
-
-
-//        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
-//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
-//
-////        //body parameters for the API call
-////        String data = "MSISDN=" + msisdn;
-////
-////        URL obj = new URL(url);
-////        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
-////
-////        connection.setRequestMethod("GET");
-////        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
-////                authorizationHeader);
-////        connection.setRequestProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
-////                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-////        connection.setDoOutput(true);
-//
-////        //write data to the body of the connection
-////        DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
-////        outputStream.writeBytes(data);
-////        outputStream.close();
-//
-//        HttpGet httpGet = new HttpGet(url);
-//
-//        //add header values required
-//        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_AUTHORIZATION,
-//                authorizationHeader);
-//        httpGet.addHeader(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT,
-//                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ACCEPT_VALUE);
-//
-//        //connect to the user info endpoint
-//        HttpResponse urlResponse = connectURL_get(httpGet);
-////        BufferedReader br = new BufferedReader(new InputStreamReader(urlResponse.getEntity().getContent()));
-////        String line;
-////        while ((line = br.readLine()) != null) {
-////            log.info(line);
-////        }
-//
-//        return urlResponse;
-
     }
 
 
