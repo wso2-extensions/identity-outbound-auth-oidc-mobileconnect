@@ -431,31 +431,29 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //call this method to contact the tokenEndpoint and retrieve the token
         tokenAuthenticationRequest(request, response, context);
 
-//        //get jsonString object from the context
-//        String jsonObject = (String) context.
-//                getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE);
-
-
+        //get JSON object of user info endpoint from context
         JSONObject json = (JSONObject) context.
                 getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_JSON_OBJECT);
 
-        String msisdn;
-        try {
-            msisdn = json.getString("msisdn");
-        } catch (JSONException e) {
-            throw new AuthenticationFailedException("Authentication failed", e);
-        }
 
-            AuthenticatedUser authenticatedUser =
-                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
-            context.setSubject(authenticatedUser);
-
-        //this section has been commented, and it will be used later
+//        this section has been commented, and it will be used later
+//        String msisdn;
 //        try {
-//            buildClaims(context, jsonObject);
-//        } catch (ApplicationAuthenticatorException e) {
+//            msisdn = json.getString("msisdn");
+//        } catch (JSONException e) {
 //            throw new AuthenticationFailedException("Authentication failed", e);
 //        }
+//
+//            AuthenticatedUser authenticatedUser =
+//                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
+//            context.setSubject(authenticatedUser);
+//
+
+        try {
+            buildClaims(context, json.toString());
+        } catch (ApplicationAuthenticatorException e) {
+            throw new AuthenticationFailedException("Authentication failed", e);
+        }
 
     }
 
@@ -492,7 +490,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             authorizationSecret = jsonResponse.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_CLIENT_SECRET);
 
-            //retrieve subscriberid if off-net
+            //retrieve subscriber id if off-net
             if (!("true").equals(uiPromptStatus)) {
                             subscriberId = jsonObject.
                     getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
@@ -502,7 +500,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_APIS);
             JSONObject operatorid = apis.
                     getJSONObject(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_OPERATOR_ID);
-
             JSONArray operatoridLink = operatorid.
                     getJSONArray(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LINK);
 
@@ -746,7 +743,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                                             AuthenticationContext context)
             throws AuthenticationFailedException {
 
-
+        //get authentication properties from the context
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
         //get the following values from the context of the flow
@@ -760,11 +757,12 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         try {
 
             String redirectURL = getCallbackUrl(authenticatorProperties);
+            //get code sent back by the Token Endpoint
             String code = request.getParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_CODE);
 
             //Base 64 encode the key and secret to attach as the header for URL connections
-            String userpass = authorizationClientId + ":" + authorizationSecret;
-            String authorizationHeader = "Basic " + Base64Utils.encode(userpass.getBytes(StandardCharsets.UTF_8));
+            String userPass = authorizationClientId + ":" + authorizationSecret;
+            String authorizationHeader = "Basic " + Base64Utils.encode(userPass.getBytes(StandardCharsets.UTF_8));
 
             //url with query parameters for TokenEndpoint API call
             String url = tokenEndpoint + "?" + "code=" + code + "&grant_type=" +
@@ -810,7 +808,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
                 log.info("Token Endpoint API call successful");
 
-                //call the userinfoAuthenticationRequest to retrive user information
+                //call the user info Authentication Endpoint to retrieve user information
                 userInfoAuthenticationRequest(context);
             }
 
@@ -832,7 +830,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         StringBuilder stringBuilder;
         try {
 
-            //retrieve the userinfo endpoint url from the Context
+            //retrieve the user info endpoint url from the Context
             String url = getUserInfoEndpointURL(context);
 
             JSONObject jsonObject = (JSONObject) context.
@@ -892,15 +890,16 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Get user info endpoint URL.
      */
-    private String getUserInfoEndpointURL(AuthenticationContext context) {
+    private String getUserInfoEndpointURL(AuthenticationContext context) throws AuthenticationFailedException {
 
         String url = (String) context.
                 getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USERINFO_ENDPOINT);
         if (StringUtils.isNotEmpty(url)) {
             return url;
         } else {
-            //this is mainly for Indian Networks
-            return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
+            //this is mainly for Indian Network
+            //return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
+            throw new AuthenticationFailedException("User Info Endpoint not found");
         }
     }
 
@@ -973,11 +972,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Build the claims required to follow up the process.
      */
-    private void buildClaims(AuthenticationContext context, String jsonObject)
+    private void buildClaims(AuthenticationContext context, String jsonString)
             throws ApplicationAuthenticatorException {
 
         Map<String, Object> userClaims;
-        userClaims = JSONUtils.parseJSON(jsonObject);
+        userClaims = JSONUtils.parseJSON(jsonString);
         if (userClaims != null) {
             Map<ClaimMapping, String> claims = new HashMap<>();
             for (Map.Entry<String, Object> entry : userClaims.entrySet()) {
