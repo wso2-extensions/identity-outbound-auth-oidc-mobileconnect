@@ -70,7 +70,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_OPERATOR_SELECTION_DONE = "done";
     static final String MOBILE_CONNECT_UI_STATUS = "UI_status";
     static final String MOBILE_CONNECT_COMPLETE = "complete";
-    static final String MOBILE_CONNECT_UI_PROMPT = "ui_prompt";
+    static final String MOBILE_CONNECT_ON_NET_STATUS = "on_net_status";
 
     //constants related to Discovery API Connection
     static final String MOBILE_CONNECT_DISCOVERY_AUTHORIZATION = "Authorization";
