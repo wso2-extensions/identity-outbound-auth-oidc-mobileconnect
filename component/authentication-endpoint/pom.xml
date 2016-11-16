@@ -31,6 +31,14 @@
     <name>WSO2 Carbon - Identity Application Authentication Mobile Connect Endpoint</name>
     <description>Identity Application Authentication Mobile Connect Endpoint</description>
     <url>http://wso2.org</url>
+
+    <dependencies>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>jstl</artifactId>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

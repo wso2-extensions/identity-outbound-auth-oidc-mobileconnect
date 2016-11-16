@@ -61,6 +61,7 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+
 /**
  * Authenticator of Mobile Connect.
  * The MobileConnectAuthenticator class carries out the Discovery API Process and the Mobile Connect API process
@@ -147,7 +148,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             //check whether the flow status has already discovered the mcc and mnc
             if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MCC_MNC).equals(context.getProperty
                     (MobileConnectAuthenticatorConstants.
-                    MOBILE_CONNECT_FLOW_STATUS))) {
+                            MOBILE_CONNECT_FLOW_STATUS))) {
 
                 HttpURLConnection connection;
 
@@ -157,7 +158,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             authorizationHeader);
 
                 } catch (IOException e) {
-                    throw new AuthenticationFailedException("Connection to Discovery API failed" , e);
+                    throw new AuthenticationFailedException("Connection to Discovery API failed", e);
                 }
 
                 try {
@@ -166,7 +167,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             response, connection);
 
                 } catch (JSONException e) {
-                    throw new AuthenticationFailedException("Parsing the JSON object failed" , e);
+                    throw new AuthenticationFailedException("Parsing the JSON object failed", e);
                 }
 
                 //if the current flow status is in Authorization Phase
@@ -264,15 +265,15 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Call the discovery endpoint with mcc and mnc.
      */
-    private HttpURLConnection callDiscoveryWithMccMnc(HttpServletRequest request ,
+    private HttpURLConnection callDiscoveryWithMccMnc(HttpServletRequest request,
                                                       Map<String, String> authenticatorProperties,
-                                         String authorizationHeader) throws IOException {
+                                                      String authorizationHeader) throws IOException {
 
         //retrieve mcc_mnc from the request
         String mccMncValue = request.getParameter(MobileConnectAuthenticatorConstants.
                 MOBILE_CONNECT_MCC_MNC);
         //retrieve mcc and mnc from above string
-        String mcc = mccMncValue.substring(0 , 3);
+        String mcc = mccMncValue.substring(0, 3);
         String mnc = mccMncValue.substring(4);
 
         //call the discovery endpoint with the mcc and mnc
@@ -322,7 +323,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
      * Prompt for Mobile Number from the IS.
      */
     private void callISMobileNumberUI(HttpServletRequest request, HttpServletResponse response,
-                                       AuthenticationContext context) throws AuthenticationFailedException {
+                                      AuthenticationContext context) throws AuthenticationFailedException {
 
         //retrieve the url of the UI from the Configuration Files
         String login = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants
@@ -377,12 +378,12 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //set Session Data Key to the request
             request.getSession().setAttribute(MobileConnectAuthenticatorConstants.
-                    MOBILE_CONNECT_SESSION_DATAKEY , sessionDK);
+                    MOBILE_CONNECT_SESSION_DATAKEY, sessionDK);
             //call the operator selection UI
             response.sendRedirect(url);
 
         } catch (IOException e) {
-            throw new AuthenticationFailedException("Redirect to Operator Selection UI failed" , e);
+            throw new AuthenticationFailedException("Redirect to Operator Selection UI failed", e);
         }
     }
 
@@ -400,7 +401,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         return subStr.substring(subStr.indexOf(MobileConnectAuthenticatorConstants.
                 MOBILE_CONNECT_SESSION_DATAKEY
                 + "="), subStr.indexOf("&")).replace((MobileConnectAuthenticatorConstants.
-                        MOBILE_CONNECT_SESSION_DATAKEY  + "=")
+                        MOBILE_CONNECT_SESSION_DATAKEY + "=")
                 , "");
     }
 
@@ -492,8 +493,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //retrieve subscriber id if off-net
             if (!("true").equals(uiPromptStatus)) {
-                            subscriberId = jsonObject.
-                    getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
+                subscriberId = jsonObject.
+                        getString(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_SUBSCRIBER_ID);
             }
 
             JSONObject apis = jsonResponse.
@@ -554,8 +555,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                         .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_ACR_VALUES,
                                 acrValues)
                         .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_NONCE, state)
-                    .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT,
-                            "ENCR_MSISDN:" + subscriberId)
+                        .setParameter(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_AUTHORIZATION_LOGIN_HINT,
+                                "ENCR_MSISDN:" + subscriberId)
                         .buildQueryMessage();
 
                 //Do not set subscriberId if off-net
@@ -866,7 +867,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             JSONObject jsonUserInfo = new JSONObject(jsonString);
 
 
-
 //            keep this code commented for future reference
 //            String msisdn = jsonUserInfo.getString("msisdn");
 //            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE,
@@ -878,7 +878,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         } catch (IOException | JSONException e) {
             throw new AuthenticationFailedException("Authentication Error when contacting the userinfo endpoint", e);
-            } finally {
+        } finally {
             if (bufferedReader != null) {
                 bufferedReader.close();
             }
@@ -897,7 +897,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         if (StringUtils.isNotEmpty(url)) {
             return url;
         } else {
-            //this is mainly for Indian Network
+            //this is mainly for Indian Network - Vodafone
             //return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
             throw new AuthenticationFailedException("User Info Endpoint not found");
         }
