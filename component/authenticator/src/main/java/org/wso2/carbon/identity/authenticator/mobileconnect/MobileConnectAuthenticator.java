@@ -313,10 +313,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         //Base 64 encode the key and secret to attach as the header for URL connections
         String userPass = mobileConnectKey + ":" + mobileConnectSecret;
-        String authorizationHeader = "Basic " + Base64Utils.
-                encode(userPass.getBytes(StandardCharsets.UTF_8));
 
-        return authorizationHeader;
+        return "Basic " + Base64Utils.
+                encode(userPass.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
