@@ -54,6 +54,8 @@ class MobileConnectAuthenticatorConstants {
     static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
     static final String MOBILE_CONNECT_LOGIN_TYPE = "mobileconnect";
+    static final String MOBILE_CONNECT_MOBILE_CLAIM = "http://wso2.org/claims/mobile";
+    static final String MOBILE_CONNECT_MOBILE_NUMBER = "mobile_number";
 
     //constants related to session management
     static final String MOBILE_CONNECT_CALLBACK_URL = "https://localhost:9443/commonauth";

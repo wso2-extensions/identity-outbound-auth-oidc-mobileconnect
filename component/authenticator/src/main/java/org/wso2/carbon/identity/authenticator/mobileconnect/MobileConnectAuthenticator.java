@@ -34,6 +34,7 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
+import org.wso2.carbon.identity.application.authentication.framework.LocalApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.ApplicationAuthenticatorException;
@@ -45,7 +46,12 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.base.IdentityConstants;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.user.core.UserRealm;
+import org.wso2.carbon.user.core.UserStoreException;
+import org.wso2.carbon.user.core.service.RealmService;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -135,8 +141,49 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String authenticationType = authenticatorProperties.get(MobileConnectAuthenticatorConstants.
                 MOBILE_CONNECT_AUTHENTICATION_TYPE);
 
-        //If the enforce type is on-net
-        if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_ON_NET).equals(authenticationType)) {
+        //this will store the mobile number which is being used in the flow
+        String msisdn = null;
+
+        //check whether the process is multi-step authentication
+        if (context.getSequenceConfig().getStepMap().size() > 1) {
+
+            //get subject details from the Authentication provided before
+            String username = getUsername(context);
+
+            if (username != null) {
+
+                //get UserRealm
+                UserRealm userRealm = getUserRealm(username);
+                //Get Tenant Aware Username
+                username = MultitenantUtils.getTenantAwareUsername(String.valueOf(username));
+                if (userRealm != null) {
+                    try {
+
+                        //retrieve username from the user stores
+                        msisdn = userRealm.getUserStoreManager()
+                                .getUserClaimValue(username,
+                                        MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MOBILE_CLAIM, null);
+                        //set the mobile number in the context
+                        context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MOBILE_NUMBER , msisdn);
+                        //change the flow of authentication directly Discovery Endpoint
+
+                        if (StringUtils.isNotEmpty(msisdn)) {
+                            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
+                                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT);
+                        }
+
+
+                    } catch (UserStoreException e) {
+                        throw new AuthenticationFailedException("Cannot find the user claim for mobile "
+                                + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+
+        //If the enforce type is on-net & that the msisdn is null
+        if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_ON_NET).equals(authenticationType) &&
+                StringUtils.isEmpty(msisdn)) {
 
             //let the context know that the system is enforcing on-net
             context.setProperty(MobileConnectAuthenticatorConstants.
@@ -192,17 +239,19 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             }
 
-            //execute this section if the Authentication Type is Off-Net
-        } else if ((MobileConnectAuthenticatorConstants.MOBILE_CONNECT_OFF_NET).equals(authenticationType)) {
-            if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null) {
+            //execute this section if the Authentication Type is Off-Net (default is off-net)
+        } else {
+            if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null &&
+                    StringUtils.isEmpty(msisdn)) {
 
                 callISMobileNumberUI(request, response, context);
 
             } else {
 
-                //check whether the msisdn is sent by the service provider
-                String msisdn = request.getParameter("msisdn");
-
+                if (StringUtils.isEmpty(msisdn)) {
+                    //check whether the msisdn is sent by the service provider
+                    msisdn = request.getParameter("msisdn");
+                }
                 //retrieve the properties configured
                 authenticatorProperties = context.getAuthenticatorProperties();
 
@@ -256,11 +305,41 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 }
             }
 
-        } else {
-            throw new AuthenticationFailedException("Authentication type is not configured properly in the IS " +
-                    "management console");
         }
     }
+
+    /**
+     * Get the username of the logged in User.
+     */
+    private String getUsername(AuthenticationContext context) {
+        String username = null;
+        for (Integer stepMap : context.getSequenceConfig().getStepMap().keySet()) {
+            if (context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedUser() != null
+                    && context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedAutenticator()
+                    .getApplicationAuthenticator() instanceof LocalApplicationAuthenticator) {
+                username = String.valueOf(context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedUser());
+                break;
+            }
+        }
+        return username;
+    }
+
+    /**
+     * Get the user realm of the logged in user.
+     */
+    private UserRealm getUserRealm(String username) throws AuthenticationFailedException {
+        UserRealm userRealm;
+        try {
+            String tenantDomain = MultitenantUtils.getTenantDomain(username);
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            RealmService realmService = IdentityTenantUtil.getRealmService();
+            userRealm = (UserRealm) realmService.getTenantUserRealm(tenantId);
+        } catch (Exception e) {
+            throw new AuthenticationFailedException("Cannot find the user realm", e);
+        }
+        return userRealm;
+    }
+
 
     /**
      * Call the discovery endpoint with mcc and mnc.
@@ -434,20 +513,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //get JSON object of user info endpoint from context
         JSONObject json = (JSONObject) context.
                 getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_JSON_OBJECT);
-
-
-//        this section has been commented, and it will be used later
-//        String msisdn;
-//        try {
-//            msisdn = json.getString("msisdn");
-//        } catch (JSONException e) {
-//            throw new AuthenticationFailedException("Authentication failed", e);
-//        }
-//
-//            AuthenticatedUser authenticatedUser =
-//                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(msisdn);
-//            context.setSubject(authenticatedUser);
-//
 
         try {
             buildClaims(context, json.toString());
@@ -865,12 +930,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             String jsonString = stringBuilder.toString();
             JSONObject jsonUserInfo = new JSONObject(jsonString);
 
-
-//            keep this code commented for future reference
-//            String msisdn = jsonUserInfo.getString("msisdn");
-//            context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_RESPONSE,
-//                    "{'fullName' : '" + msisdn + "'} ");
-
             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_USER_INFO_JSON_OBJECT
                     , jsonUserInfo);
 
@@ -897,8 +956,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             return url;
         } else {
             //this is mainly for Indian Network - Vodafone
-            //return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
-            throw new AuthenticationFailedException("User Info Endpoint not found");
+            return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
+            //throw new AuthenticationFailedException("User Info Endpoint not found");
         }
     }
 
