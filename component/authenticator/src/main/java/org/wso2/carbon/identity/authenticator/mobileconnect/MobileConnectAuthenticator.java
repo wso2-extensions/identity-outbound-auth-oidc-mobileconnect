@@ -907,7 +907,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             String idToken = jsonObject.getString("id_token");
 
             //add query parameters
-            url = url + "&access_token=" + accessToken + "&token_type=" + tokenType + "&id_token=" + idToken;
+            url = url + "?access_token=" + accessToken + "&token_type=" + tokenType + "&id_token=" + idToken;
 
             HttpGet httpGet = new HttpGet(url);
             String tokenValue = "Bearer " + accessToken;
@@ -956,7 +956,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             return url;
         } else {
             //this is mainly for Indian Network - Vodafone
-            return "https://india.mconnect.wso2telco.com/oauth2/userinfo?schema=openid";
+            return "https://india.mconnect.wso2telco.com/oauth2/userinfo";
             //throw new AuthenticationFailedException("User Info Endpoint not found");
         }
     }
@@ -975,6 +975,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
     }
 
+    /**
+     * Call the Operator Selection UI fro the Discovery Endpoint.
+     */
     private HttpResponse operatorSelectionDiscoveryCall(String authorizationHeader) throws IOException {
 
         //url to call the Discovery API endpoint for operator selection URL
