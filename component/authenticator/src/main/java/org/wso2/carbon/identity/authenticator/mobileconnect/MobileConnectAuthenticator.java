@@ -956,8 +956,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             return url;
         } else {
             //this is mainly for Indian Network - Vodafone
-            return "https://india.mconnect.wso2telco.com/oauth2/userinfo";
-            //throw new AuthenticationFailedException("User Info Endpoint not found");
+            //return "https://india.mconnect.wso2telco.com/oauth2/userinfo";
+            throw new AuthenticationFailedException("User Info Endpoint not found");
         }
     }
 
@@ -1182,4 +1182,5 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         return configProperties;
     }
+
 }
