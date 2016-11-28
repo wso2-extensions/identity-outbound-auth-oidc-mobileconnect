@@ -15,13 +15,17 @@
  ~ limitations under the License.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
         <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
+        <relativePath>../../pom.xml</relativePath>
         <version>1.0.6-SNAPSHOT</version>
     </parent>
-    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.feature</artifactId>
+
+    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.server.feature</artifactId>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - identity Mobile Connect Feature</name>
     <url>http://wso2.org</url>
@@ -47,8 +51,8 @@
                             <goal>p2-feature-gen</goal>
                         </goals>
                         <configuration>
-                            <id>org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector</id>
-                            <propertiesFile>feature.properties</propertiesFile>
+                            <id>org.wso2.carbon.extension.identity.authenticator.mobileconnect.server</id>
+                            <propertiesFile>../etc/feature.properties</propertiesFile>
                             <adviceFile>
                                 <properties>
                                     <propertyDef>org.wso2.carbon.p2.category.type:server</propertyDef>
@@ -60,6 +64,7 @@
                                     org.wso2.carbon.extension.identity.authenticator:org.wso2.carbon.extension.identity.authenticator.mobileconnect.connector
                                 </bundleDef>
                             </bundles>
+
                         </configuration>
                     </execution>
                 </executions>
