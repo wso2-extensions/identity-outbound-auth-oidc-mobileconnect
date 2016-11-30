@@ -347,16 +347,23 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String mcc = mccMncValue.substring(0, 3);
         String mnc = mccMncValue.substring(4);
 
-        //call the discovery endpoint with the mcc and mnc
-        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_IDENTTIFIED_MCC + "=" + mcc +
+        //retrieve callback url
+        String callbackURL = getCallbackUrl(authenticatorProperties);
+
+        //encode query parameters
+        mcc = URLEncoder.encode(mcc, String.valueOf(StandardCharsets.UTF_8));
+        mnc = URLEncoder.encode(mnc, String.valueOf(StandardCharsets.UTF_8));
+        callbackURL = URLEncoder.encode(callbackURL, String.valueOf(StandardCharsets.UTF_8));
+
+        //prepare queryParameters
+        String queryParameters =  MobileConnectAuthenticatorConstants.MOBILE_CONNECT_IDENTTIFIED_MCC + "=" + mcc +
                 "&" + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_IDENTTIFIED_MNC + "=" +
                 mnc +
                 "&" + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
-                getCallbackUrl(authenticatorProperties);
+                callbackURL;
 
-        //Encoding URL query parameters
-        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+        //call the discovery endpoint with the mcc and mnc
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" + queryParameters;
 
         //create URL object
         URL obj = new URL(url);
@@ -826,13 +833,16 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             String userPass = authorizationClientId + ":" + authorizationSecret;
             String authorizationHeader = "Basic " + Base64Utils.encode(userPass.getBytes(StandardCharsets.UTF_8));
 
-            //url with query parameters for TokenEndpoint API call
-            String url = tokenEndpoint + "?" + "code=" + code + "&grant_type=" +
-                    MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_GRANT_TYPE + "&redirect_uri=" +
+            //encode query parameters
+            redirectURL = URLEncoder.encode(redirectURL, String.valueOf(StandardCharsets.UTF_8));
+
+            //prepare query parameters
+            String queryParameters = "grant_type=" +
+            MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_GRANT_TYPE + "&redirect_uri=" +
                     redirectURL;
 
-            //Encoding URL query parameters
-            url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+            //url with query parameters for TokenEndpoint API call
+            String url = tokenEndpoint + "?" + "code=" + code + "&" + queryParameters;
 
             URL obj = new URL(url);
             HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
@@ -906,11 +916,17 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             String tokenType = jsonObject.getString(MobileConnectAuthenticatorConstants.TOKEN_TYPE);
             String idToken = jsonObject.getString(MobileConnectAuthenticatorConstants.ID_TOKEN);
 
-            //add query parameters
-            url = url + "?access_token=" + accessToken + "&token_type=" + tokenType + "&id_token=" + idToken;
+            //encode query parameters
+            accessToken = URLEncoder.encode(accessToken, String.valueOf(StandardCharsets.UTF_8));
+            tokenType = URLEncoder.encode(tokenType, String.valueOf(StandardCharsets.UTF_8));
+            idToken = URLEncoder.encode(idToken, String.valueOf(StandardCharsets.UTF_8));
 
-            //Encoding URL query parameters
-            url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+            //prepare query parameters
+            String queryParameters = "access_token=" + accessToken + "&token_type=" + tokenType + "&id_token=" +
+                    idToken;
+
+            //add query parameters
+            url = url + "?" + queryParameters;
 
             HttpGet httpGet = new HttpGet(url);
             String tokenValue = "Bearer " + accessToken;
@@ -981,13 +997,12 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
      */
     private HttpResponse operatorSelectionDiscoveryCall(String authorizationHeader) throws IOException {
 
-        //url to call the Discovery API endpoint for operator selection URL
-        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
+        //prepare query parameters
+        String queryParameters = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
 
-        //Encoding URL query parameters
-        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+        //url to call the Discovery API endpoint for operator selection URL
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" + queryParameters;
 
         HttpGet httpGet = new HttpGet(url);
 
@@ -1008,12 +1023,12 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             throws IOException {
 
 
-        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
+        //prepare query parameters
+        String queryParameters = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
 
-        //Encoding URL query parameters
-        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+        //create url to make the API call
+        String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" + queryParameters;
 
         //body parameters for the API call
         String data = "MSISDN=" + msisdn;
