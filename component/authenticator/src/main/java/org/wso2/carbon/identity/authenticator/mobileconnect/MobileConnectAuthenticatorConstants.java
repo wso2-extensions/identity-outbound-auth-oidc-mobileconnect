@@ -40,6 +40,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_LINKS_USERINFO = "userinfo";
     static final String MOBILE_CONNECT_LINKS_AUTHORIZATION = "authorization";
     static final String MOBILE_CONNECT_LINKS_TOKEN = "token";
+    static final String MOBILE_CONNECT_ENCR_MSISDN = "ENCR_MSISDN";
 
     //Constants related to the overall mobile connect properties
     static final String AUTHENTICATOR_NAME = "MobileConnectAuthenticator";
@@ -49,6 +50,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_API_SECRET = "APISecret";
     static final String MOBILE_CONNECT_KEY = "MobileConnectKey";
     static final String MOBILE_CONNECT_SECRET = "MobileConnectSecret";
+    static final String MOBILE_CONNECT_LINK_REFERENCE = "rel";
     static final String CLAIM_ID = "id";
     static final String DEFAULT_USER_IDENTIFIER = "id";
     static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
@@ -71,7 +73,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_OPERATOR_SELECTION_STATUS = "operatorSelectionStatus";
     static final String MOBILE_CONNECT_OPERATOR_SELECTION_DONE = "done";
     static final String MOBILE_CONNECT_UI_STATUS = "UI_status";
-    static final String MOBILE_CONNECT_COMPLETE = "complete";
+    static final String MOBILE_CONNECT_UI_PROCESS_COMPLETE = "complete";
     static final String MOBILE_CONNECT_ON_NET_STATUS = "on_net_status";
 
     //constants related to Discovery API Connection
@@ -81,24 +83,34 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_DISCOVERY_REDIRECT_URL = "Redirect_URL";
     static final String MOBILE_CONNECT_DISCOVERY_JSON_OBJECT = "response";
     static final String MOBILE_CONNECT_ON_NET = "on-net";
-    static final String MOBILE_CONNECT_OFF_NET = "off-net";
     static final String MOBILE_CONNECT_SESSION_DATAKEY  = "sessionDataKey";
     static final String MOBILE_CONNECT_CONTEXT_IDENTIFIER  = "contextIdentifier";
     static final String MOBILE_CONNECT_IDENTTIFIED_MCC  = "Identified-MCC";
     static final String MOBILE_CONNECT_IDENTTIFIED_MNC  = "Identified-MNC";
+    static final String MOBILE_CONNECT_MSISDN  = "msisdn";
 
     //constants related to the Token endpoint connection
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE = "Content-Type";
     static final String MOBILE_CONNECT_TOKEN_CODE = "code";
-    static final String MOBILE_CONNECT_USER_INFO_RESPONSE = "jsonString";
     static final String MOBILE_CONNECT_TOKEN_GRANT_TYPE = "authorization_code";
     static final String MOBILE_CONNECT_TOKEN_JSON_OBJECT = "token_json_object";
     static final String MOBILE_CONNECT_USER_INFO_JSON_OBJECT = "user_info_json_object";
+
+    //constants related to UserInfo Endpoint
+    static final String ACCESS_TOKEN = "access_token";
+    static final String TOKEN_TYPE = "token_type";
+    static final String ID_TOKEN = "id_token";
+
 
     //constants related to OIDC variables
     static final String OIDC_CODE = "code";
     static final String OIDC_STATE = "state";
     static final String OIDC_ERROR = "error";
+
+    //constants related to Http URL Connections
+    static final String GET_METHOD = "GET";
+    static final String POST_METHOD = "POST";
+    static final String LOCATION_HEADER = "location";
 
 
 }
