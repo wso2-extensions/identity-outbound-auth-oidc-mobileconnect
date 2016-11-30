@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -353,6 +354,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 mnc +
                 "&" + MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 getCallbackUrl(authenticatorProperties);
+
+        //Encoding URL query parameters
+        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
 
         //create URL object
         URL obj = new URL(url);
@@ -827,6 +831,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     MobileConnectAuthenticatorConstants.MOBILE_CONNECT_TOKEN_GRANT_TYPE + "&redirect_uri=" +
                     redirectURL;
 
+            //Encoding URL query parameters
+            url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+
             URL obj = new URL(url);
             HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
 
@@ -902,6 +909,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             //add query parameters
             url = url + "?access_token=" + accessToken + "&token_type=" + tokenType + "&id_token=" + idToken;
 
+            //Encoding URL query parameters
+            url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+
             HttpGet httpGet = new HttpGet(url);
             String tokenValue = "Bearer " + accessToken;
 
@@ -976,6 +986,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
 
+        //Encoding URL query parameters
+        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
+
         HttpGet httpGet = new HttpGet(url);
 
         //add header values required
@@ -998,6 +1011,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
                 MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
+
+        //Encoding URL query parameters
+        url = URLEncoder.encode(url, String.valueOf(StandardCharsets.UTF_8));
 
         //body parameters for the API call
         String data = "MSISDN=" + msisdn;
