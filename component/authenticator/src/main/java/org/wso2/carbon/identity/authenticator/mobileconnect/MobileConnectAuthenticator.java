@@ -225,7 +225,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
                     //call this method to decode the response sent from the Discovery Endpoint and connect with the
                     // authorization endpoint
-                    callAuthenticationEndpoint(context, response);
+                    revokeAuthorizationEndpoint(context, response);
                 }
 
 
@@ -287,7 +287,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
                         //call this method to decode the response sent from the Discovery Endpoint and connect with the
                         // authorization endpoint
-                        callAuthenticationEndpoint(context, response);
+                        revokeAuthorizationEndpoint(context, response);
                     }
 
                 } else {
@@ -527,7 +527,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Handle the response received from the Discovery Endpoint and connect with the Authentication Endpoint.
      */
-    private void callAuthenticationEndpoint(AuthenticationContext context, HttpServletResponse response) throws
+    private void revokeAuthorizationEndpoint(AuthenticationContext context, HttpServletResponse response) throws
             AuthenticationFailedException {
 
         //retrieve the properties configured
