@@ -177,6 +177,16 @@
                 <artifactId>axis2</artifactId>
                 <version>${axis2.wso2.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.codehaus.jettison</groupId>
+                <artifactId>jettison</artifactId>
+                <version>${org.codehaus.jettison.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.orbit.org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${org.wso2.orbit.org.apache.httpcomponents.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <build>
@@ -386,7 +396,7 @@
     <modules>
         <module>component/authenticator</module>
         <module>component/authentication-endpoint</module>
-        <module>feature/org.wso2.carbon.identity.authenticator.mobileconnect.server.feature</module>
+        <module>feature</module>
     </modules>
 
     <properties>
