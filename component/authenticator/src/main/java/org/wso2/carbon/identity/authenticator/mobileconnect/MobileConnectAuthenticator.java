@@ -51,7 +51,6 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -149,26 +148,28 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         if (context.getSequenceConfig().getStepMap().size() > 1) {
 
             //get subject details from the Authentication provided before
-            String username = getUsername(context);
+            AuthenticatedUser authenticatedUser = getAuthenticatedUser(context);
 
-            if (username != null) {
+
+            if (authenticatedUser != null) {
 
                 //get UserRealm
-                UserRealm userRealm = getUserRealm(username);
+                UserRealm userRealm = getUserRealm(authenticatedUser.getTenantDomain());
                 //Get Tenant Aware Username
-                username = MultitenantUtils.getTenantAwareUsername(username);
                 if (userRealm != null) {
                     try {
 
                         //retrieve username from the user stores
                         msisdn = userRealm.getUserStoreManager()
-                                .getUserClaimValue(username,
+                                .getUserClaimValue(authenticatedUser.getUserStoreDomain() + "/" + authenticatedUser.
+                                                getUserName(),
                                         MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MOBILE_CLAIM, null);
-                        //set the mobile number in the context
-                        context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_MOBILE_NUMBER , msisdn);
-                        //change the flow of authentication directly Discovery Endpoint
 
                         if (StringUtils.isNotEmpty(msisdn)) {
+                            //set the mobile number in the context
+                            context.setProperty(MobileConnectAuthenticatorConstants.
+                                    MOBILE_CONNECT_MOBILE_NUMBER , msisdn);
+                            //change the flow of authentication directly Discovery Endpoint
                             context.setProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS,
                                     MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_ENDPOINT);
                         }
@@ -245,7 +246,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             if (context.getProperty(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_FLOW_STATUS) == null &&
                     StringUtils.isEmpty(msisdn)) {
 
-                callISMobileNumberUI(request, response, context);
+                redirectToMobileNumberUI(request, response, context);
 
             } else {
 
@@ -303,17 +304,17 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Get the username of the logged in User.
      */
-    private String getUsername(AuthenticationContext context) {
-        String username = null;
+    private AuthenticatedUser getAuthenticatedUser(AuthenticationContext context) {
+        AuthenticatedUser authenticatedUser = null;
         for (Integer stepMap : context.getSequenceConfig().getStepMap().keySet()) {
             if (context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedUser() != null
                     && context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedAutenticator()
                     .getApplicationAuthenticator() instanceof LocalApplicationAuthenticator) {
-                username = String.valueOf(context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedUser());
+                authenticatedUser = context.getSequenceConfig().getStepMap().get(stepMap).getAuthenticatedUser();
                 break;
             }
         }
-        return username;
+        return authenticatedUser;
     }
 
     /**
@@ -322,8 +323,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     private UserRealm getUserRealm(String username) throws AuthenticationFailedException {
         UserRealm userRealm;
         try {
-            String tenantDomain = MultitenantUtils.getTenantDomain(username);
-            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            int tenantId = IdentityTenantUtil.getTenantId(username);
             RealmService realmService = IdentityTenantUtil.getRealmService();
             userRealm = (UserRealm) realmService.getTenantUserRealm(tenantId);
         } catch (Exception e) {
@@ -402,8 +402,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Prompt for Mobile Number from the IS.
      */
-    private void callISMobileNumberUI(HttpServletRequest request, HttpServletResponse response,
-                                      AuthenticationContext context) throws AuthenticationFailedException {
+    private void redirectToMobileNumberUI(HttpServletRequest request, HttpServletResponse response,
+                                          AuthenticationContext context) throws AuthenticationFailedException {
 
         //retrieve the url of the UI from the Configuration Files
         String loginEndpointUrl = getAuthenticatorConfig().getParameterMap().get(MobileConnectAuthenticatorConstants
@@ -453,7 +453,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             //get the 302 redirect URL from the headers of the HttpResponse
             String url = httpResponse.getHeaders(MobileConnectAuthenticatorConstants.LOCATION_HEADER)[0].
                     toString().substring(10);
-
             //get session data key
             String sessionDataKey = getSessionDataKey(context);
 
