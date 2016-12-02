@@ -32,7 +32,7 @@
 
     <scm>
         <url>https://github.com/wso2-extensions/identity-outbound-auth-oidc-mobileconnect.git</url>
-        <developerConnection>scm:https://github.com/wso2-extensions/identity-outbound-auth-oidc-mobileconnect.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/wso2-extensions/identity-outbound-auth-oidc-mobileconnect.git</developerConnection>
         <connection>scm:git:https://github.com/wso2-extensions/identity-outbound-auth-oidc-mobileconnect.git</connection>
         <tag>HEAD</tag>
     </scm>
