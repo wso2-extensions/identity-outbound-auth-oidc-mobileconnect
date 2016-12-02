@@ -21,11 +21,11 @@
     <parent>
         <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
         <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
-        <relativePath>../../pom.xml</relativePath>
-        <version>1.0.6-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+        <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.server.feature</artifactId>
+    <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.feature</artifactId>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - identity Mobile Connect Feature</name>
     <url>http://wso2.org</url>
@@ -42,7 +42,7 @@
             <plugin>
                 <groupId>org.wso2.maven</groupId>
                 <artifactId>carbon-p2-plugin</artifactId>
-                <version>1.5.3</version>
+                <version>${carbon.p2.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>4-p2-feature-generation</id>
