@@ -81,7 +81,8 @@
                             org.wso2.carbon.ui.*,
                             org.apache.commons.logging.*; version="1.0.4",
                             org.osgi.framework,
-                            org.wso2.carbon.identity.application.authentication.framework.*,
+                            org.wso2.carbon.identity.application.authentication.framework.*;
+                            version="${carbon.identity.framework.import.version.range}",
                             javax.servlet,
                             javax.servlet.http,
                             *;resolution:=optional
