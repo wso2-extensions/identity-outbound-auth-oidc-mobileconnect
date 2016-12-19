@@ -271,7 +271,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                         try {
 
                             //call this method to retrieve a HttpURLConnection object
-                            HttpURLConnection connection = discoveryProcess(authorizationHeader, msisdn);
+                            HttpURLConnection connection = discoveryProcess(authorizationHeader, msisdn ,
+                                    authenticatorProperties);
 
                             //carryout the process of connecting the Discovery Endpoint
                             discoveryEndpointRead(context,
@@ -1018,13 +1019,14 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * msisdn based Discovery (Developer app uses Discovery API to send msisdn).
      */
-    private HttpURLConnection discoveryProcess(String authorizationHeader, String msisdn)
+    private HttpURLConnection discoveryProcess(String authorizationHeader, String msisdn, Map<String, String>
+            authenticationProperties)
             throws IOException {
 
 
         //prepare query parameters
         String queryParameters = MobileConnectAuthenticatorConstants.MOBILE_CONNECT_DISCOVERY_REDIRECT_URL + "=" +
-                MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL;
+                getCallbackUrl(authenticationProperties);
 
         //create url to make the API call
         String url = MobileConnectAuthenticatorConstants.DISCOVERY_API_URL + "?" + queryParameters;
@@ -1200,6 +1202,17 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         mobileConnectAcrValues.setDescription("Enter the Mobile Connect ACR Values required");
         mobileConnectAcrValues.setDisplayOrder(4);
         configProperties.add(mobileConnectAcrValues);
+
+        //set the mobile connect redirect URL
+        Property mobileConnectCallBack = new Property();
+        mobileConnectCallBack.setName(IdentityApplicationConstants.OAuth2.CALLBACK_URL);
+        mobileConnectCallBack.setDisplayName("Mobile Connect Redirect URL");
+        mobileConnectCallBack.setRequired(false);
+        mobileConnectAcrValues.setValue(MobileConnectAuthenticatorConstants.MOBILE_CONNECT_CALLBACK_URL);
+        mobileConnectCallBack.setDescription("Enter the Mobile Connect Redirect URL");
+        mobileConnectCallBack.setDisplayOrder(5);
+        configProperties.add(mobileConnectCallBack);
+
 
         return configProperties;
     }
