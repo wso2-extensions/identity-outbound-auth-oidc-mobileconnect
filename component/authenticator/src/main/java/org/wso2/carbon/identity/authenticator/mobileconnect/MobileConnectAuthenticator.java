@@ -527,7 +527,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * Handle the response received from the Discovery Endpoint and connect with the Authentication Endpoint.
      */
-    private void revokeAuthorizationEndpoint(AuthenticationContext context, HttpServletResponse response) throws
+    private void invokeAuthorizationEndpoint(AuthenticationContext context, HttpServletResponse response) throws
             AuthenticationFailedException {
 
         //retrieve the properties configured
