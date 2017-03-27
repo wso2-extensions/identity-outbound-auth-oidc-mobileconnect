@@ -25,7 +25,7 @@
     </parent>
     <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
     <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon Extension - Mobile Connect Pom</name>
     <url>http://wso2.org</url>
@@ -116,9 +116,9 @@
                 <version>${carbon.identity.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity.outbound.auth.oidc</groupId>
+                <groupId>org.wso2.carbon.identity</groupId>
                 <artifactId>org.wso2.carbon.identity.application.authenticator.oidc</artifactId>
-                <version>${org.wso2.carbon.identity.outbound.auth.oidc.version}</version>
+                <version>${org.wso2.carbon.identity.application.authenticator.oidc.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.wso2.carbon</groupId>
@@ -401,7 +401,7 @@
 
     <properties>
         <carbon.identity.version>5.0.7</carbon.identity.version>
-        <org.wso2.carbon.identity.outbound.auth.oidc.version>5.1.3</org.wso2.carbon.identity.outbound.auth.oidc.version>
+        <org.wso2.carbon.identity.application.authenticator.oidc.version>5.0.7</org.wso2.carbon.identity.application.authenticator.oidc.version>
         <commons-logging.version>4.4.3</commons-logging.version>
         <carbon.kernel.version>4.4.3</carbon.kernel.version>
         <oltu.version>1.0.0.wso2v2</oltu.version>
