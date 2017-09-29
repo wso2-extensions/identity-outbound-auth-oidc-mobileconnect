@@ -56,6 +56,7 @@ class MCAuthenticatorConstants {
     static final String DISCOVERY_API_URL = "MCDiscoveryAPIURL";
     static final String MC_LOGIN_TYPE = "mobileconnect";
     static final String MC_MOBILE_CLAIM = "mobile_claim";
+    static final String MC_MOBILE_CLAIM_VALUE = "http://wso2.org/claims/mobile";
     static final String MC_MOBILE_NUMBER = "mobile_number";
 
     //constants related to session management

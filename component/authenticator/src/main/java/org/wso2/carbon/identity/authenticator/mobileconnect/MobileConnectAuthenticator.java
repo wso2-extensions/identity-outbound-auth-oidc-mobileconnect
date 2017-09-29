@@ -197,7 +197,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //let the context know that the system is enforcing on-net
             context.setProperty(MCAuthenticatorConstants.
-                    MC_ON_NET_STATUS, "true");
+                    MC_ON_NET_STATUS, Boolean.TRUE);
 
             //get encoded authorization header
             String authorizationHeader = getAuthorizationHeader(authenticatorProperties);
@@ -355,7 +355,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String mnc = mccMncValue.substring(4);
 
         if (log.isDebugEnabled()) {
-            log.debug("MCC and MNC vaues are retrived from the GSMA, the values are " + mcc + " and " + mnc);
+            log.debug("MCC and MNC vaues are retrived from the GSMA, the values are : " + mcc + " and : " + mnc);
         }
 
         //retrieve callback url
@@ -378,8 +378,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 .DISCOVERY_API_URL);
 
         if (StringUtils.isEmpty(discoveryAPIURL)) {
+            //assigning the default URL for the discoveryAPIURL hence the URL is not added in configuration file
             discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
-            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+            log.warn("Discovery API URL is not configured, hence using the default value : " + discoveryAPIURL);
         }
 
         //call the discovery endpoint with the mcc and mnc
@@ -450,13 +451,14 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String loginEndpointUrl = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
                 .MC_UI_ENDPOINT_URL);
 
+        //default login page URL will be considered as this
         String loginPage = "mobileconnectauthenticationendpoint/mobileconnect.jsp";
         if (StringUtils.isNotEmpty(loginEndpointUrl)) {
             loginPage = ConfigurationFacade.getInstance().getAuthenticationEndpointURL()
                     .replace("authenticationendpoint/login.do", loginEndpointUrl);
         } else {
-            log.warn("Mobile connect Web application Endpoint URL is not configured , hence using the default value "
-            + loginPage);
+            log.warn("Mobile connect Web application Endpoint URL is not configured , hence using the default " +
+                    "value : " + loginPage);
         }
 
         //get query parameter from the context
@@ -617,7 +619,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     getString(MCAuthenticatorConstants.MC_AUTHORIZATION_CLIENT_SECRET);
 
             //retrieve subscriber id if off-net
-            if (!("true").equals(uiPromptStatus)) {
+            if (!(Boolean.TRUE).equals(uiPromptStatus)) {
                 subscriberId = jsonObject.
                         getString(MCAuthenticatorConstants.MC_AUTHORIZATION_SUBSCRIBER_ID);
             } else {
@@ -1001,15 +1003,16 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 .DISCOVERY_API_URL);
 
         if (StringUtils.isEmpty(discoveryAPIURL)) {
+            //assigning the default URL for the discoveryAPIURL hence the URL is not added in configuration file
             discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
-            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+            log.warn("Discovery API URL is not configured, hence using the default value : " + discoveryAPIURL);
         }
 
         //url to call the Discovery API endpoint for operator selection URL
         String url = discoveryAPIURL + "?" + queryParameters;
 
         if (log.isDebugEnabled()) {
-            log.debug("Eoperation Selection Discovery Call process with the URL " + url);
+            log.debug("Eoperation Selection Discovery Call process with the URL : " + url);
         }
 
         HttpGet httpGet = new HttpGet(url);
@@ -1038,8 +1041,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 .DISCOVERY_API_URL);
 
         if (StringUtils.isEmpty(discoveryAPIURL)) {
+            //assigning the default URL for the discoveryAPIURL hence the URL is not added in configuration file
             discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
-            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+            log.warn("Discovery API URL is not configured, hence using the default value : " + discoveryAPIURL);
         }
 
         //create url to make the API call
@@ -1124,7 +1128,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 get(MCAuthenticatorConstants.DEFAULT_USER_IDENTIFIER));
 
         if (log.isDebugEnabled()) {
-            log.debug("The subject claim that you have selected is null. The default subject claim " +
+            log.debug("The subject claim that you have selected is null. The default subject claim : " +
                     authenticatedUserId + " has been set");
         }
         if (StringUtils.isEmpty(authenticatedUserId)) {
@@ -1163,8 +1167,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         if (StringUtils.isNotEmpty(callbackURL)) {
             return authenticatorProperties.get(MCAuthenticatorConstants.MC_CALLBACK_URL);
         } else {
+            //assigning the default URL for the callbackURL hence the URL is not added in UI
             callbackURL = "https://localhost:9443/commonauth";
-            log.warn("callback URL is not found in the configurations, hence using the default value " + callbackURL);
+            log.warn("callback URL is not found in the configurations, hence using the default value : " + callbackURL);
         }
         return callbackURL;
     }
@@ -1236,7 +1241,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         mobileConnectMobileClaim.setName(MCAuthenticatorConstants.MC_MOBILE_CLAIM);
         mobileConnectMobileClaim.setDisplayName("Mobile Connect Mobile Claim");
         mobileConnectMobileClaim.setRequired(true);
-        mobileConnectMobileClaim.setValue("http://wso2.org/claims/mobile");
+        mobileConnectMobileClaim.setValue(MCAuthenticatorConstants.MC_MOBILE_CLAIM_VALUE);
         mobileConnectMobileClaim.setDescription("Add the user claim which you are using for the mobile number");
         mobileConnectMobileClaim.setDisplayOrder(5);
         configProperties.add(mobileConnectMobileClaim);
