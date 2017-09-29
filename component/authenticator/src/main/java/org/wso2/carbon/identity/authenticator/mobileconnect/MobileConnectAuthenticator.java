@@ -46,7 +46,6 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authenticator.oidc.OpenIDConnectAuthenticator;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -272,7 +271,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
                         try {
 
-                            String callbackURL = authenticatorProperties.get(MCAuthenticatorConstants.MC_CALLBACK_URL);
+                            String callbackURL = getCallbackUrl(authenticatorProperties);
 
                             if (StringUtils.isBlank(callbackURL)) {
                                 callbackURL = IdentityUtil.getServerURL(FrameworkConstants.COMMONAUTH,
@@ -374,9 +373,18 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 "&" + MCAuthenticatorConstants.MC_DISCOVERY_REDIRECT_URL + "=" +
                 callbackURL;
 
+
+        String discoveryAPIURL =  getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
+                .DISCOVERY_API_URL);
+
+        if (StringUtils.isEmpty(discoveryAPIURL)) {
+            discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
+            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+        }
+
         //call the discovery endpoint with the mcc and mnc
-        String url = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
-                .DISCOVERY_API_URL) + "?" + queryParameters;
+        String url = discoveryAPIURL + "?" + queryParameters;
+
 
         if (log.isDebugEnabled()) {
             log.debug("Calling the discovery endpoint with the mcc and mnc and the URL is " + url);
@@ -442,11 +450,15 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String loginEndpointUrl = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
                 .MC_UI_ENDPOINT_URL);
 
-        String loginPage = "";
+        String loginPage = "mobileconnectauthenticationendpoint/mobileconnect.jsp";
         if (StringUtils.isNotEmpty(loginEndpointUrl)) {
             loginPage = ConfigurationFacade.getInstance().getAuthenticationEndpointURL()
                     .replace("authenticationendpoint/login.do", loginEndpointUrl);
+        } else {
+            log.warn("Mobile connect Web application Endpoint URL is not configured , hence using the default value "
+            + loginPage);
         }
+
         //get query parameter from the context
         String queryParams = FrameworkUtils.getQueryStringWithFrameworkContextId(context.getQueryParams(),
                 context.getCallerSessionKey(), context.getContextIdentifier());
@@ -984,9 +996,17 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String queryParameters = MCAuthenticatorConstants.MC_DISCOVERY_REDIRECT_URL + "=" +
                 getCallbackUrl(context.getAuthenticatorProperties());
 
+
+        String discoveryAPIURL =  getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
+                .DISCOVERY_API_URL);
+
+        if (StringUtils.isEmpty(discoveryAPIURL)) {
+            discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
+            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+        }
+
         //url to call the Discovery API endpoint for operator selection URL
-        String url = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
-                .DISCOVERY_API_URL) + "?" + queryParameters;
+        String url = discoveryAPIURL + "?" + queryParameters;
 
         if (log.isDebugEnabled()) {
             log.debug("Eoperation Selection Discovery Call process with the URL " + url);
@@ -1014,9 +1034,17 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String queryParameters = MCAuthenticatorConstants.MC_DISCOVERY_REDIRECT_URL + "=" +
                 callbackURL;
 
+        String discoveryAPIURL =  getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
+                .DISCOVERY_API_URL);
+
+        if (StringUtils.isEmpty(discoveryAPIURL)) {
+            discoveryAPIURL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
+            log.warn("Discovery API URL is not configured, hence using the default value " + discoveryAPIURL);
+        }
+
         //create url to make the API call
-        String url = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
-                .DISCOVERY_API_URL) + "?" + queryParameters;
+        String url = discoveryAPIURL + "?" + queryParameters;
+
 
         //body parameters for the API call
         String data = "MSISDN=" + msisdn;
@@ -1130,10 +1158,15 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     @Override
     protected String getCallbackUrl(Map<String, String> authenticatorProperties) {
 
-        if (StringUtils.isNotEmpty(authenticatorProperties.get(IdentityApplicationConstants.OAuth2.CALLBACK_URL))) {
-            return authenticatorProperties.get(IdentityApplicationConstants.OAuth2.CALLBACK_URL);
+        String callbackURL = authenticatorProperties.get(MCAuthenticatorConstants.MC_CALLBACK_URL);
+
+        if (StringUtils.isNotEmpty(callbackURL)) {
+            return authenticatorProperties.get(MCAuthenticatorConstants.MC_CALLBACK_URL);
+        } else {
+            callbackURL = "https://localhost:9443/commonauth";
+            log.warn("callback URL is not found in the configurations, hence using the default value " + callbackURL);
         }
-        return authenticatorProperties.get(MCAuthenticatorConstants.MC_CALLBACK_URL);
+        return callbackURL;
     }
 
 
