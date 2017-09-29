@@ -197,7 +197,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //let the context know that the system is enforcing on-net
             context.setProperty(MCAuthenticatorConstants.
-                    MC_ON_NET_STATUS, Boolean.TRUE);
+                    MC_ON_NET_STATUS, "true");
 
             //get encoded authorization header
             String authorizationHeader = getAuthorizationHeader(authenticatorProperties);
@@ -619,7 +619,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     getString(MCAuthenticatorConstants.MC_AUTHORIZATION_CLIENT_SECRET);
 
             //retrieve subscriber id if off-net
-            if (!(Boolean.TRUE).equals(uiPromptStatus)) {
+            if (!("true").equals(uiPromptStatus)) {
                 subscriberId = jsonObject.
                         getString(MCAuthenticatorConstants.MC_AUTHORIZATION_SUBSCRIBER_ID);
             } else {
