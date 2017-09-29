@@ -53,7 +53,7 @@ class MCAuthenticatorConstants {
     static final String MC_LINK_REFERENCE = "rel";
     static final String CLAIM_ID = "id";
     static final String DEFAULT_USER_IDENTIFIER = "id";
-    static final String DISCOVERY_API_URL = "MCDiscoveryAPIURL"; //remove
+    static final String DISCOVERY_API_URL = "MCDiscoveryAPIURL";
     static final String MC_LOGIN_TYPE = "mobileconnect";
     static final String MC_MOBILE_CLAIM = "mobile_claim";
     static final String MC_MOBILE_NUMBER = "mobile_number";
@@ -82,9 +82,9 @@ class MCAuthenticatorConstants {
     static final String MC_ON_NET = "on-net";
     static final String MC_SESSION_DATAKEY = "sessionDataKey";
     static final String MC_CONTEXT_IDENTIFIER = "contextIdentifier";
-    static final String MC_IDENTTIFIED_MCC = "Identified-MCC"; //selected
-    static final String MC_IDENTTIFIED_MNC = "Identified-MNC";
-    static final String MC_MSISDN = "msisdn"; //double check weater this is capital
+    static final String MC_SELECTED_MCC = "Selected-MCC";
+    static final String MC_SELECTED_MNC = "Selected-MNC";
+    static final String MC_MSISDN = "msisdn";
 
     //constants related to the Token endpoint connection
     static final String MC_TOKEN_CODE = "code";
@@ -99,7 +99,7 @@ class MCAuthenticatorConstants {
 
 
     //constants related to OIDC variables
-    static final String OIDC_CODE = "code"; //check why 2 variables
+    static final String OIDC_CODE = "code";
     static final String OIDC_STATE = "state";
     static final String OIDC_ERROR = "error";
 

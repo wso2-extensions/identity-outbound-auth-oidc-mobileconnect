@@ -178,8 +178,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             //change the flow of authentication directly Discovery Endpoint
                             context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
                                     MCAuthenticatorConstants.MC_DISCOVERY_ENDPOINT);
+                        } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("msisdn is empty during initiate Authentication Request");
+                            }
                         }
-
 
                     } catch (UserStoreException e) {
                         throw new AuthenticationFailedException("Cannot find the user claim for mobile "
@@ -216,14 +219,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     throw new AuthenticationFailedException("Connection to Discovery API failed", e);
                 }
 
-                try {
-                    //Read contents retrieved from the Discovery Endpoint
-                    discoveryEndpointRead(context,
-                            response, connection);
-
-                } catch (JSONException e) {
-                    throw new AuthenticationFailedException("Parsing the JSON object failed", e);
-                }
+                  //Read contents retrieved from the Discovery Endpoint
+                    discoveryEndpointRead(context, response, connection);
 
                 //if the current flow status is in Authorization Phase
                 if (MCAuthenticatorConstants.MC_AUTHORIZATION_ENDPOINT.equals(context.
@@ -238,8 +235,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             } else {
 
                 //carryout the process of connecting the Discovery Endpoint for on-net Operator Selection
-                operatorSelectionProcess(authorizationHeader, context,
-                        response, request);
+                operatorSelectionProcess(authorizationHeader, context, response, request);
 
                 //set property in context to ensure that operator selection is being carried out in the flow
                 context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
@@ -284,13 +280,13 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                             }
 
                             //call this method to retrieve a HttpURLConnection object
-                            HttpURLConnection connection = discoveryProcess(authorizationHeader, msisdn, callbackURL);
+                            HttpURLConnection connection = msisdnBasedDiscoveryProcess(authorizationHeader,
+                                    msisdn, callbackURL);
 
                             //carryout the process of connecting the Discovery Endpoint
-                            discoveryEndpointRead(context,
-                                    response, connection);
+                            discoveryEndpointRead(context, response, connection);
 
-                        } catch (JSONException | IOException e) {
+                        } catch (IOException e) {
                             throw new AuthenticationFailedException("connection to Discovery Endpoint failed", e);
                         }
 
@@ -359,6 +355,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String mcc = mccMncValue.substring(0, 3);
         String mnc = mccMncValue.substring(4);
 
+        if (log.isDebugEnabled()) {
+            log.debug("MCC and MNC vaues are retrived from the GSMA, the values are " + mcc + " and " + mnc);
+        }
+
         //retrieve callback url
         String callbackURL = getCallbackUrl(authenticatorProperties);
 
@@ -368,8 +368,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         callbackURL = URLEncoder.encode(callbackURL, String.valueOf(StandardCharsets.UTF_8));
 
         //prepare queryParameters
-        String queryParameters =  MCAuthenticatorConstants.MC_IDENTTIFIED_MCC + "=" + mcc +
-                "&" + MCAuthenticatorConstants.MC_IDENTTIFIED_MNC + "=" +
+        String queryParameters =  MCAuthenticatorConstants.MC_SELECTED_MCC + "=" + mcc +
+                "&" + MCAuthenticatorConstants.MC_SELECTED_MNC + "=" +
                 mnc +
                 "&" + MCAuthenticatorConstants.MC_DISCOVERY_REDIRECT_URL + "=" +
                 callbackURL;
@@ -377,6 +377,11 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //call the discovery endpoint with the mcc and mnc
         String url = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
                 .DISCOVERY_API_URL) + "?" + queryParameters;
+
+        if (log.isDebugEnabled()) {
+            log.debug("Calling the discovery endpoint with the mcc and mnc and the URL is " + url);
+        }
+
 
         //create URL object
         URL obj = new URL(url);
@@ -407,8 +412,21 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String mobileConnectSecret =   authenticatorProperties.get(MCAuthenticatorConstants.
                 MC_API_SECRET);
 
+        String userPass = null;
+
+
+        if (StringUtils.isNotEmpty(mobileConnectKey) || StringUtils.isNotEmpty(mobileConnectSecret)) {
+            userPass = mobileConnectKey + ":" + mobileConnectSecret;
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Error while retrieving properties. Authenticator Properties cannot be null");
+            }
+
+            throw new AuthenticationFailedException("MobileConnect Key or MobileConnect Secret is not configured");
+        }
+
         //Base 64 encode the key and secret to attach as the header for URL connections
-        String userPass = mobileConnectKey + ":" + mobileConnectSecret;
+         userPass = mobileConnectKey + ":" + mobileConnectSecret;
 
         return "Basic " + Base64Utils.
                 encode(userPass.getBytes(StandardCharsets.UTF_8));
@@ -437,6 +455,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String retryParam = "";
         if (context.isRetrying()) {
             retryParam = "&authFailure=true&authFailureMsg=login.fail.message";
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Context is not in the in retrying stage, authentication is failing ");
+            }
         }
 
         try {
@@ -449,7 +471,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     + getName() + retryParam);
         } catch (IOException e) {
             throw new AuthenticationFailedException("Authentication failed!", e);
-
         }
         context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
                 MCAuthenticatorConstants.MC_DISCOVERY_ENDPOINT);
@@ -531,10 +552,19 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         JSONObject json = (JSONObject) context.
                 getProperty(MCAuthenticatorConstants.MC_USER_INFO_JSON_OBJECT);
 
-        try {
-            buildClaims(context, json.toString());
-        } catch (ApplicationAuthenticatorException e) {
-            throw new AuthenticationFailedException("Authentication failed", e);
+        if (json == null) {
+            String url = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
+            try {
+                response.sendRedirect(url);
+            } catch (IOException e) {
+                throw new AuthenticationFailedException("Authentication failed , received response is empty");
+            }
+        } else {
+            try {
+                buildClaims(context, json.toString());
+            } catch (ApplicationAuthenticatorException e) {
+                throw new AuthenticationFailedException("Authentication failed", e);
+            }
         }
 
     }
@@ -552,14 +582,14 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //decode the json object returned from the Discovery API
         JSONObject jsonObject = (JSONObject) context.
                 getProperty(MCAuthenticatorConstants.MC_DISCOVERY_JSON_OBJECT);
-        //todo add null to those values below
-        String authorizationEndpoint = "";
-        String tokenEndpoint = "";
-        String userinfoEndpoint = "";
-        String operatoridScope = "";
-        String authorizationClientId;
-        String authorizationSecret;
-        String subscriberId = "";
+
+        String authorizationEndpoint = null;
+        String tokenEndpoint = null;
+        String userinfoEndpoint = null;
+        String operatoridScope = null;
+        String authorizationClientId = null;
+        String authorizationSecret = null;
+        String subscriberId = null;
 
         //this is maintained to check whether the authentication type is on-net or off-net
         String uiPromptStatus = (String) context.getProperty(MCAuthenticatorConstants
@@ -645,11 +675,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                     .buildQueryMessage();
 
 
-            //contact the authorization endpoint
-            String url = oAuthClientRequest.getLocationUri();
-            response.sendRedirect(url);
-
-            //todo:check
             //set the context values to be used in the rest of the flow
             context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
                     MCAuthenticatorConstants.MC_TOKEN_ENDPOINT);
@@ -662,6 +687,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             context.setProperty(MCAuthenticatorConstants.OIDC_STATE,
                     state);
 
+            //contact the authorization endpoint
+            String url = oAuthClientRequest.getLocationUri();
+            response.sendRedirect(url);
+
         } catch (OAuthSystemException | IOException e) {
             throw new AuthenticationFailedException("response redirection failed", e);
         }
@@ -673,8 +702,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
      */
     private void discoveryEndpointRead(AuthenticationContext context,
                                        HttpServletResponse response, HttpURLConnection connection)
-            throws JSONException,
-            AuthenticationFailedException {
+            throws AuthenticationFailedException {
 
 
         try {
@@ -696,13 +724,19 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                 String responseString = stringBuilder.toString();
                 reader.close();
                 //create JSON object using the String retrieved
-                JSONObject jsonObject = new JSONObject(responseString);
+                JSONObject jsonObject = null;
+                try {
+                    jsonObject = new JSONObject(responseString);
+                } catch (JSONException e) {
+                    throw new AuthenticationFailedException("Exception occured while reading the" +
+                            " discovery API endpoints", e);
+                }
                 //add the JSON object to the context of the session
                 context.setProperty(MCAuthenticatorConstants.
                                 MC_DISCOVERY_JSON_OBJECT,
                         jsonObject);
                 //let the context know the end of the Discovery Process, and ste it to Authorization
-                //todo :need to check on this
+
                 context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
                         MCAuthenticatorConstants.MC_AUTHORIZATION_ENDPOINT);
                 log.info("MSISDN is valid. Discovery Endpoint authorization successful");
@@ -710,8 +744,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             } else if (responseCode == HttpStatus.SC_MOVED_TEMPORARILY) {
                 //if 302, move temporarily
-                //todo:change with httpheaders,location
-                String redirectUrl = connection.getHeaderField("location");
+                String redirectUrl = connection.getHeaderField(HttpHeaders.LOCATION);
                 //retrieve the redirect URL and redirect the flow
                 response.sendRedirect(redirectUrl);
                 context.setProperty(MCAuthenticatorConstants.MC_FLOW_STATUS,
@@ -739,32 +772,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
     }
 
-
-    /**
-     * Return the mobile connect key from configuration files or UI.
-     */
-    private String getMobileConnectAPIKey(Map<String, String> authenticatorProperties) throws
-            AuthenticationFailedException {
-
-        //retrieve mobile connect key from the configuration file of IS
-        String mobileConnectKey = getAuthenticatorConfig().getParameterMap().
-                get(MCAuthenticatorConstants.MC_KEY);
-
-        if (StringUtils.isNotEmpty(mobileConnectKey)) {
-            return mobileConnectKey;
-        } else if (StringUtils.isNotEmpty(authenticatorProperties.
-                get(MCAuthenticatorConstants.MC_API_KEY))) {
-            //retrieve the mobile connect key from the IS user interface
-            return authenticatorProperties.get(MCAuthenticatorConstants.MC_API_KEY);
-        } else {
-
-            //if both the configuration files and UI key values are null
-            throw new AuthenticationFailedException("MobileConnect Key is not configured");
-        }
-
-    }
-
-
     /**
      * Return the mobile connect scope from UI or Discovery API response.
      */
@@ -784,30 +791,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         }
 
     }
-
-
-    /**
-     * Return the mobile connect secret from configuration files or UI.
-     */
-    private String getMobileConnectAPISecret(Map<String, String> authenticatorProperties) throws
-            AuthenticationFailedException {
-
-        //retrieve mobile connect secret from the configuration file of IS
-        String mobileConnectSecret = getAuthenticatorConfig().getParameterMap().
-                get(MCAuthenticatorConstants.MC_SECRET);
-        if (StringUtils.isNotEmpty(mobileConnectSecret)) {
-            return mobileConnectSecret;
-        } else if (StringUtils.isNotEmpty(authenticatorProperties.
-                get(MCAuthenticatorConstants.MC_API_SECRET))) {
-            //retrieve the mobile connect secret from the IS user interface
-            return authenticatorProperties.get(MCAuthenticatorConstants.MC_API_SECRET);
-        } else {
-            //if both the configuration files and UI secret values are null
-            throw new AuthenticationFailedException("MobileConnect Secret is not configured");
-        }
-
-    }
-
 
     /**
      * Process the response of the Discovery and Mobile Connect API and contact the Token Endpoint.
@@ -860,14 +843,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             //if the connection is unauthorized
             if (connection.getResponseCode() == 401 || connection.getResponseCode() == 400) {
-                String retryURL = ConfigurationFacade.getInstance().getAuthenticationEndpointRetryURL();
-                try {
-                    response.sendRedirect(retryURL);
                     throw new AuthenticationFailedException("Invalid Token. Authentication failed");
-                } catch (IOException e1) {
-                    throw new AuthenticationFailedException("response redirection failed", e1);
-                }
-
                 //if connection is authorized
             } else {
                 //read the response sent by the server
@@ -1012,6 +988,10 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         String url = getAuthenticatorConfig().getParameterMap().get(MCAuthenticatorConstants
                 .DISCOVERY_API_URL) + "?" + queryParameters;
 
+        if (log.isDebugEnabled()) {
+            log.debug("Eoperation Selection Discovery Call process with the URL " + url);
+        }
+
         HttpGet httpGet = new HttpGet(url);
 
         //add header values required
@@ -1027,8 +1007,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     /**
      * msisdn based Discovery (Developer app uses Discovery API to send msisdn).
      */
-    //todo:method mobileconnectdescoveryprocess, think
-    private HttpURLConnection discoveryProcess(String authorizationHeader, String msisdn, String callbackURL)
+    private HttpURLConnection msisdnBasedDiscoveryProcess(String authorizationHeader, String msisdn, String callbackURL)
             throws IOException {
 
         //prepare query parameters
@@ -1045,7 +1024,9 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         URL obj = new URL(url);
         HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
 
-        //Prakhash : add debug what is going out here
+        if (log.isDebugEnabled()) {
+            log.debug("Trying to discover the mobile service providers endpoint with the mobile number provided");
+        }
 
         connection.setRequestMethod(HttpMethod.POST);
         connection.setRequestProperty(MCAuthenticatorConstants.MC_DISCOVERY_AUTHORIZATION,
@@ -1231,7 +1212,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         //set the mobile connect claim for mobile number values
         Property mobileConnectCallbackURL = new Property();
         mobileConnectCallbackURL.setName(MCAuthenticatorConstants.MC_CALLBACK_URL);
-        mobileConnectCallbackURL.setDisplayName("Mobile Connect Mobile Callback URL");
+        mobileConnectCallbackURL.setDisplayName("Mobile Connect Callback URL");
         mobileConnectCallbackURL.setRequired(true);
         mobileConnectCallbackURL.setDescription("Enter value corresponding to callback url");
         mobileConnectCallbackURL.setDisplayOrder(6);
