@@ -51,8 +51,7 @@ class MobileConnectAuthenticatorConstants {
     static final String MOBILE_CONNECT_KEY = "MobileConnectKey";
     static final String MOBILE_CONNECT_SECRET = "MobileConnectSecret";
     static final String MOBILE_CONNECT_LINK_REFERENCE = "rel";
-    static final String CLAIM_ID = "id";
-    static final String DEFAULT_USER_IDENTIFIER = "id";
+    static final String DEFAULT_USER_IDENTIFIER = "sub";
     static final String DISCOVERY_API_URL = "https://discover.mobileconnect.io/gsma/v2/discovery/";
     static final String MOBILE_CONNECT_TOKEN_CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
     static final String MOBILE_CONNECT_LOGIN_TYPE = "mobileconnect";
@@ -112,5 +111,6 @@ class MobileConnectAuthenticatorConstants {
     static final String POST_METHOD = "POST";
     static final String LOCATION_HEADER = "location";
 
-
+    //calimDialectUri parameter
+    static final String CLAIM_DIALECT_URI_PARAMETER = "ClaimDialectUri";
 }
