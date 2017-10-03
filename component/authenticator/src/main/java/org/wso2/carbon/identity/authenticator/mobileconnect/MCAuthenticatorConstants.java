@@ -51,8 +51,7 @@ class MCAuthenticatorConstants {
     static final String MC_KEY = "MobileConnectKey";
     static final String MC_SECRET = "MobileConnectSecret";
     static final String MC_LINK_REFERENCE = "rel";
-    static final String CLAIM_ID = "id";
-    static final String DEFAULT_USER_IDENTIFIER = "id";
+    static final String DEFAULT_USER_IDENTIFIER = "sub";
     static final String DISCOVERY_API_URL = "MCDiscoveryAPIURL";
     static final String MC_LOGIN_TYPE = "mobileconnect";
     static final String MC_MOBILE_CLAIM = "mobile_claim";
@@ -92,6 +91,10 @@ class MCAuthenticatorConstants {
     static final String MC_TOKEN_GRANT_TYPE = "authorization_code";
     static final String MC_TOKEN_JSON_OBJECT = "token_json_object";
     static final String MC_USER_INFO_JSON_OBJECT = "user_info_json_object";
+
+    //calimDialectUri parameter
+    static final String CLAIM_DIALECT_URI_PARAMETER = "ClaimDialectUri";
+    static final String PREFIX_CLAIM_DIALECT_URI_PARAMETER = "PrefixClaimDialectUri";
 
     //constants related to UserInfo Endpoint
     static final String ACCESS_TOKEN = "access_token";

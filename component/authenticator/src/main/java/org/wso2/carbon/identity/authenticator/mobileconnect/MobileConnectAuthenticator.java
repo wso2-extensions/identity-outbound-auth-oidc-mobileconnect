@@ -37,13 +37,17 @@ import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.LocalApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
+import org.wso2.carbon.identity.application.authentication.framework.config.builder.FileBasedConfigurationBuilder;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.ApplicationAuthenticatorException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.authenticator.oidc.OpenIDConnectAuthenticator;
+import org.wso2.carbon.identity.application.common.model.ClaimConfig;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.base.IdentityConstants;
@@ -1082,40 +1086,85 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     private void buildClaims(AuthenticationContext context, String jsonString)
             throws ApplicationAuthenticatorException {
 
-        Map<String, Object> userClaims;
-        userClaims = JSONUtils.parseJSON(jsonString);
+        final String claimDialectUri = getClaimDialectURI();
+        final boolean shouldPrefixClaimDialectUri = shouldPrefixClaimDialectUri();
+        final ClaimConfig claimConfig = context.getExternalIdP().getIdentityProvider().getClaimConfig();
+        final String userClaimUri = claimConfig.getUserClaimURI();
+        final boolean isLocalClaimDialect = claimConfig.isLocalClaimDialect();
+        final boolean isUserClaimUriBlank = StringUtils.isBlank(userClaimUri);
+        Map<String, Object> userClaims = JSONUtils.parseJSON(jsonString);
+
         if (userClaims != null) {
             Map<ClaimMapping, String> claims = new HashMap<>();
+            String claimUri = null;
+            String claimValue = null;
             for (Map.Entry<String, Object> entry : userClaims.entrySet()) {
-                claims.put(ClaimMapping.build(entry.getKey(), entry.getKey(), null,
-                        false), entry.getValue().toString());
+                claimUri = getEffectiveClaimUri(claimDialectUri, entry.getKey(),
+                        shouldPrefixClaimDialectUri);
+                if (entry.getValue() != null) {
+                    claimValue = entry.getValue().toString();
+                }
+                if (StringUtils.isNotEmpty(claimUri) && StringUtils.isNotEmpty(claimValue)) {
+                    claims.put(ClaimMapping.build(claimUri, claimUri, null, false), claimValue);
+                }
+
                 if (log.isDebugEnabled() &&
                         IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
-                    log.debug("Adding claim mapping : " + entry.getKey() + " <> " + entry.getKey() + " : "
-                            + entry.getValue());
+                    log.debug("Adding claim mapping : " + claimUri + " <> " + claimUri + " : "
+                            + claimValue);
                 }
             }
-            if (StringUtils.isBlank(context.getExternalIdP().getIdentityProvider().getClaimConfig().
-                    getUserClaimURI())) {
+
+            if (isUserClaimUriBlank) {
+                //Set id as the default userClaimUri in IDP claim Configs.
                 context.getExternalIdP().getIdentityProvider().getClaimConfig().setUserClaimURI
-                        (MCAuthenticatorConstants.CLAIM_ID);
+                        (getEffectiveClaimUri(claimDialectUri,
+                                MCAuthenticatorConstants.DEFAULT_USER_IDENTIFIER, shouldPrefixClaimDialectUri));
             }
-            String subjectFromClaims = FrameworkUtils.getFederatedSubjectFromClaims(
-                    context.getExternalIdP().getIdentityProvider(), claims);
-            if (subjectFromClaims != null && !subjectFromClaims.isEmpty()) {
-                AuthenticatedUser authenticatedUser =
-                        AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(subjectFromClaims);
-                context.setSubject(authenticatedUser);
-            } else {
+
+            if (isLocalClaimDialect && !isUserClaimUriBlank && StringUtils.isNotBlank(claimDialectUri)) {
                 setSubject(context, userClaims);
+                context.getSubject().setUserAttributes(claims);
+                try {
+                    String subjectFromClaims = FrameworkUtils.getFederatedSubjectFromClaims(context, claimDialectUri);
+                    if (StringUtils.isNotBlank(subjectFromClaims)) {
+                        context.getSubject().setAuthenticatedSubjectIdentifier(subjectFromClaims);
+                    }
+                } catch (FrameworkException ex) {
+                    log.error("Error while retrieving subject from claims. " +
+                            "Both Dedicated claim dialect (" + claimDialectUri +
+                            ") and user ID Claim URI (" + userClaimUri + ") is Configured.", ex);
+                }
+            } else {
+                String subjectFromClaims = FrameworkUtils.getFederatedSubjectFromClaims(
+                        context.getExternalIdP().getIdentityProvider(), claims);
+                if (StringUtils.isNotBlank(subjectFromClaims)) {
+                    AuthenticatedUser authenticatedUser =
+                            AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(subjectFromClaims);
+                    context.setSubject(authenticatedUser);
+                } else {
+                    setSubject(context, userClaims);
+                }
+                context.getSubject().setUserAttributes(claims);
             }
-            context.getSubject().setUserAttributes(claims);
         } else {
             if (log.isDebugEnabled()) {
                 log.debug("Decoded json object is null");
             }
             throw new ApplicationAuthenticatorException("Decoded json object is null");
         }
+    }
+
+    /**
+     * Prefix give ClaimDialactUri to given claimUri.
+     */
+    private String getEffectiveClaimUri(String claimDialectUri, String claimUri,
+                                        boolean shouldPrefixClaimDialectUri) {
+
+        if (shouldPrefixClaimDialectUri && StringUtils.isNotBlank(claimDialectUri)) {
+            return claimDialectUri + "/" + claimUri;
+        }
+        return claimUri;
     }
 
     /**
@@ -1174,6 +1223,40 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         return callbackURL;
     }
 
+    protected boolean shouldPrefixClaimDialectUri() {
+
+        AuthenticatorConfig authConfig = FileBasedConfigurationBuilder.getInstance().getAuthenticatorBean(getName());
+        if (authConfig != null) {
+            Map<String, String> parameters = authConfig.getParameterMap();
+            if (parameters != null) {
+                return Boolean.parseBoolean(parameters.get(
+                        MCAuthenticatorConstants.PREFIX_CLAIM_DIALECT_URI_PARAMETER));
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public String getClaimDialectURI() {
+
+        String claimDialectUri = super.getClaimDialectURI();
+        AuthenticatorConfig authConfig = FileBasedConfigurationBuilder.getInstance().getAuthenticatorBean(getName());
+        if (authConfig != null) {
+            Map<String, String> parameters = authConfig.getParameterMap();
+            if (parameters != null) {
+                String customClaimDialectUri = parameters.get(
+                        MCAuthenticatorConstants.CLAIM_DIALECT_URI_PARAMETER);
+                if (StringUtils.isNotBlank(customClaimDialectUri)) {
+                    claimDialectUri = customClaimDialectUri;
+                }
+            }
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Authenticator: " + getName() + " is using the claim dialect uri: " +
+                    claimDialectUri);
+        }
+        return claimDialectUri;
+    }
 
     /**
      * Get Configuration Properties.
@@ -1259,5 +1342,4 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         return configProperties;
     }
-
 }
