@@ -25,7 +25,7 @@ package org.wso2.carbon.identity.authenticator.mobileconnect;
  */
 class MCAuthenticatorConstants {
 
-    //constants related to the Authorization Endpoint Connection
+    // Constants related to the Authorization Endpoint Connection.
     static final String MC_AUTHORIZATION_CLIENT_ID = "client_id";
     static final String MC_AUTHORIZATION_CLIENT_SECRET = "client_secret";
     static final String MC_AUTHORIZATION_RESPONSE_TYPE = "code";
@@ -42,7 +42,7 @@ class MCAuthenticatorConstants {
     static final String MC_LINKS_TOKEN = "token";
     static final String MC_ENCR_MSISDN = "ENCR_MSISDN";
 
-    //Constants related to the overall mobile connect properties
+    // Constants related to the overall mobile connect properties.
     static final String AUTHENTICATOR_NAME = "MobileConnectAuthenticator";
     static final String AUTHENTICATOR_FRIENDLY_NAME = "Mobile Connect";
     static final String MC_API_KEY = "APIKey";
@@ -58,11 +58,11 @@ class MCAuthenticatorConstants {
     static final String MC_MOBILE_CLAIM_VALUE = "http://wso2.org/claims/mobile";
     static final String MC_MOBILE_NUMBER = "mobile_number";
 
-    //constants related to session management
+    // Constants related to session management.
     static final String MC_CALLBACK_URL = "callbackUrl";
     static final String MC_UI_ENDPOINT_URL = "MCAuthenticationEndpointURL";
 
-    //Constants related to the state of the process
+    // Constants related to the state of the process.
     static final String MC_DISCOVERY_ENDPOINT = "discovery_endpoint";
     static final String MC_AUTHORIZATION_ENDPOINT = "authorization_endpoint";
     static final String MC_TOKEN_ENDPOINT = "token_endpoint";
@@ -75,7 +75,7 @@ class MCAuthenticatorConstants {
     static final String MC_UI_PROCESS_COMPLETE = "complete";
     static final String MC_ON_NET_STATUS = "on_net_status";
 
-    //constants related to Discovery API Connection
+    // Constants related to Discovery API Connection.
     static final String MC_DISCOVERY_AUTHORIZATION = "Authorization";
     static final String MC_DISCOVERY_REDIRECT_URL = "Redirect_URL";
     static final String MC_DISCOVERY_JSON_OBJECT = "response";
@@ -86,11 +86,12 @@ class MCAuthenticatorConstants {
     static final String MC_SELECTED_MNC = "Selected-MNC";
     static final String MC_MSISDN = "msisdn";
 
-    //constants related to the Token endpoint connection
+    // Constants related to the Token endpoint connection.
     static final String MC_TOKEN_CODE = "code";
     static final String MC_TOKEN_GRANT_TYPE = "authorization_code";
     static final String MC_TOKEN_JSON_OBJECT = "token_json_object";
     static final String MC_USER_INFO_JSON_OBJECT = "user_info_json_object";
+
 
     //calimDialectUri parameter
     static final String CLAIM_DIALECT_URI_PARAMETER = "ClaimDialectUri";
@@ -102,7 +103,7 @@ class MCAuthenticatorConstants {
     static final String ID_TOKEN = "id_token";
 
 
-    //constants related to OIDC variables
+    // Constants related to OIDC variables.
     static final String OIDC_CODE = "code";
     static final String OIDC_STATE = "state";
     static final String OIDC_ERROR = "error";
