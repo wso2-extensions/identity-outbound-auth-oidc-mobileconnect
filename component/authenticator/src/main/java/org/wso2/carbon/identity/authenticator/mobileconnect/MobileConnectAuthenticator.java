@@ -723,7 +723,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         try {
 
-            // Ret response from HttpURLConnection.
+            // Get response from HttpURLConnection.
             int responseCode = connection.getResponseCode();
             // If 200 OK.
             if (responseCode == HttpStatus.SC_OK) {
