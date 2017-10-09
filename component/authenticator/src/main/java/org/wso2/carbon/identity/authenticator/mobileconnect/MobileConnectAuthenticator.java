@@ -293,8 +293,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
                         }
 
                         /**
-                         * call this method to decode the response sent from the Discovery Endpoint and connect with the
-                         * authorization endpoint
+                         * Call this method to decode the response sent from the Discovery Endpoint and connect with the
+                         * authorization endpoint.
                          */
                         revokeAuthorizationEndpoint(context, request, response);
                     }
@@ -1044,7 +1044,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             log.warn("Discovery API URL is not configured, hence using the default value: " + discoveryAPIURL);
         }
 
-        // Create url to make the API call
+        // Create url to make the API call.
         String url = discoveryAPIURL + "?" + queryParameters;
 
 
