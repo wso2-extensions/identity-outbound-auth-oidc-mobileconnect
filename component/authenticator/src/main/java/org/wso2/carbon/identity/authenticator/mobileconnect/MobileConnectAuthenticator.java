@@ -78,7 +78,7 @@ import javax.ws.rs.core.MediaType;
 
 /**
  * Authenticator of Mobile Connect.
- * The MobileConnectAuthenticator class carries out the Discovery API Process and the Mobile Connect API process
+ * The MobileConnectAuthenticator class carries out the Discovery API Process and the Mobile Connect API process.
  */
 public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator implements
         FederatedApplicationAuthenticator {
@@ -87,8 +87,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
     private static Log log = LogFactory.getLog(MobileConnectAuthenticator.class);
 
     /**
-     * Check whether the authentication or logout request can be handled by the
-     * authenticator.
+     * Check whether the authentication or logout request can be handled by the authenticator.
      */
     public boolean canHandle(HttpServletRequest request) {
 
@@ -105,7 +104,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             return false;
 
         } else if (request.getParameter(MCAuthenticatorConstants.MC_MCC_MNC) != null) {
-            // To check if the request is carrying a mcc_mnc parameter
+            // To check if the request is carrying a mcc_mnc parameter.
             request.getSession().setAttribute(MCAuthenticatorConstants.
                     MC_OPERATOR_SELECTION_STATUS, MCAuthenticatorConstants.MC_OPERATOR_SELECTION_DONE);
             return true;
@@ -138,7 +137,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
         // Retrieve the properties configured.
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
-        //retrieve the authentication type for mobile connect
+        // Retrieve the authentication type for mobile connect.
         String authenticationType = authenticatorProperties.get(MCAuthenticatorConstants.MC_AUTHENTICATION_TYPE);
 
 
@@ -224,8 +223,8 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
 
                     /**
-                     * Call this method to decode the response sent from the Discovery Endpoint and connect with the.
-                     * authorization endpoint
+                     * Call this method to decode the response sent from the Discovery Endpoint and connect with the
+                     * authorization endpoint.
                      */
                     revokeAuthorizationEndpoint(context, request, response);
                 }
@@ -428,6 +427,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
 
         if (StringUtils.isNotEmpty(mobileConnectKey) || StringUtils.isNotEmpty(mobileConnectSecret)) {
+            // Base 64 encode the key and secret to attach as the header for URL connections.
             userPass = mobileConnectKey + ":" + mobileConnectSecret;
         } else {
             if (log.isDebugEnabled()) {
@@ -436,9 +436,6 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
 
             throw new AuthenticationFailedException("MobileConnect Key or MobileConnect Secret is not configured");
         }
-
-        // Base 64 encode the key and secret to attach as the header for URL connections.
-         userPass = mobileConnectKey + ":" + mobileConnectSecret;
 
         return "Basic " + Base64Utils.
                 encode(userPass.getBytes(StandardCharsets.UTF_8));
@@ -946,16 +943,13 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
             context.setProperty(MCAuthenticatorConstants.MC_USER_INFO_JSON_OBJECT
                     , jsonUserInfo);
 
-
         } catch (IOException | JSONException e) {
             throw new AuthenticationFailedException("Authentication Error when contacting the userinfo endpoint", e);
         } finally {
             if (bufferedReader != null) {
                 bufferedReader.close();
             }
-
         }
-
     }
 
     /**
