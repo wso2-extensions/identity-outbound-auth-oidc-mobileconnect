@@ -22,7 +22,7 @@
         <groupId>org.wso2.carbon.extension.identity.authenticator</groupId>
         <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect</artifactId>
         <relativePath>../pom.xml</relativePath>
-        <version>1.0.2-SNAPSHOT</version>
+        <version>1.0.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>org.wso2.carbon.extension.identity.authenticator.mobileconnect.feature</artifactId>
