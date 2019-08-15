@@ -84,7 +84,7 @@ public class MobileConnectAuthenticator extends OpenIDConnectAuthenticator imple
         FederatedApplicationAuthenticator {
 
     private static final long serialVersionUID = -8755624597283931608L;
-    private static Log log = LogFactory.getLog(MobileConnectAuthenticator.class);
+    private static final Log log = LogFactory.getLog(MobileConnectAuthenticator.class);
 
     /**
      * Check whether the authentication or logout request can be handled by the authenticator.

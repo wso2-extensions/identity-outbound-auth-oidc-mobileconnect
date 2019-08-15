@@ -30,7 +30,7 @@ import org.wso2.carbon.identity.authenticator.mobileconnect.MobileConnectAuthent
  */
 public class MobileConnectAuthenticatorServiceComponent {
 
-    private static Log log = LogFactory.getLog(MobileConnectAuthenticatorServiceComponent.class);
+    private static final Log log = LogFactory.getLog(MobileConnectAuthenticatorServiceComponent.class);
 
     protected void activate(ComponentContext ctxt) {
         try {
